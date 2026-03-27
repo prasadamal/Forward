@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
+    "preinstall": "node scripts/check-node-version.js",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
