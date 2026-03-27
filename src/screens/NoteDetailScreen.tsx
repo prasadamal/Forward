@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View, Text, ScrollView, StyleSheet, SafeAreaView, StatusBar,
-  TouchableOpacity, Alert, Linking,
+  TouchableOpacity, Alert, Linking, Share,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Clipboard from 'expo-clipboard';
 import { useNoteStore } from '../store/noteStore';
 import { Colors } from '../constants/colors';
 import { RootStackParamList } from '../types';
@@ -25,7 +26,7 @@ const PLATFORM_COLORS: Record<string, string> = {
 export default function NoteDetailScreen() {
   const route = useRoute<RouteType>();
   const navigation = useNavigation<NavProp>();
-  const { getNoteById, deleteNote, togglePin, getFolderById } = useNoteStore();
+  const { getNoteById, deleteNote, archiveNote, restoreNote, togglePin, getFolderById } = useNoteStore();
   const colors = Colors.dark;
 
   const note = getNoteById(route.params.noteId);
@@ -40,8 +41,18 @@ export default function NoteDetailScreen() {
 
   const platformColor = PLATFORM_COLORS[note.platform || 'manual'];
 
-  const handleDelete = () => {
-    Alert.alert('Delete Note', 'This note will be permanently deleted.', [
+  const handleArchive = () => {
+    Alert.alert('Archive Note', 'This note will be moved to the Archived folder.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Archive', style: 'destructive',
+        onPress: () => { archiveNote(note.id); navigation.goBack(); },
+      },
+    ]);
+  };
+
+  const handlePermanentDelete = () => {
+    Alert.alert('Permanently Delete', 'This note will be permanently deleted. This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete', style: 'destructive',
@@ -50,8 +61,33 @@ export default function NoteDetailScreen() {
     ]);
   };
 
+  const handleRestore = () => {
+    Alert.alert('Restore Note', 'This note will be restored from the archive.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Restore',
+        onPress: () => { restoreNote(note.id); navigation.goBack(); },
+      },
+    ]);
+  };
+
   const handleOpenLink = () => {
     if (note.url) Linking.openURL(note.url).catch(() => {});
+  };
+
+  const handleCopy = async () => {
+    const text = note.url ? `${note.content}\n\n${note.url}` : note.content;
+    await Clipboard.setStringAsync(text);
+    Alert.alert('Copied', 'Note copied to clipboard');
+  };
+
+  const handleShare = async () => {
+    const text = note.url ? `${note.content}\n\n${note.url}` : note.content;
+    try {
+      await Share.share({ message: text });
+    } catch {
+      // user cancelled
+    }
   };
 
   return (
@@ -67,15 +103,34 @@ export default function NoteDetailScreen() {
           <TouchableOpacity onPress={() => togglePin(note.id)} style={styles.toolBtn}>
             <Text style={styles.toolBtnText}>{note.pinned ? '📌' : '📍'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('EditNote', { noteId: note.id })}
-            style={styles.toolBtn}
-          >
-            <Text style={[styles.toolBtnLabel, { color: colors.accent }]}>Edit</Text>
+          <TouchableOpacity onPress={handleCopy} style={styles.toolBtn}>
+            <Text style={[styles.toolBtnLabel, { color: colors.accent }]}>Copy</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleDelete} style={styles.toolBtn}>
-            <Text style={[styles.toolBtnLabel, { color: colors.error }]}>Delete</Text>
+          <TouchableOpacity onPress={handleShare} style={styles.toolBtn}>
+            <Text style={[styles.toolBtnLabel, { color: colors.accent }]}>Share</Text>
           </TouchableOpacity>
+          {note.archived ? (
+            <>
+              <TouchableOpacity onPress={handleRestore} style={styles.toolBtn}>
+                <Text style={[styles.toolBtnLabel, { color: colors.accent }]}>Restore</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handlePermanentDelete} style={styles.toolBtn}>
+                <Text style={[styles.toolBtnLabel, { color: colors.error }]}>Delete</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('EditNote', { noteId: note.id })}
+                style={styles.toolBtn}
+              >
+                <Text style={[styles.toolBtnLabel, { color: colors.accent }]}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleArchive} style={styles.toolBtn}>
+                <Text style={[styles.toolBtnLabel, { color: colors.error }]}>Archive</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
 

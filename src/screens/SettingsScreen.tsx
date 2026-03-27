@@ -3,9 +3,20 @@ import {
   View, Text, StyleSheet, SafeAreaView, StatusBar,
   TouchableOpacity, Alert, ScrollView,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useNoteStore } from '../store/noteStore';
 import { Colors } from '../constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform as PlatformType } from '../types';
+
+const PLATFORM_STATS: { key: PlatformType; label: string; color: string }[] = [
+  { key: 'youtube', label: 'YouTube', color: '#FF0000' },
+  { key: 'instagram', label: 'Instagram', color: '#C13584' },
+  { key: 'twitter', label: 'Twitter', color: '#1DA1F2' },
+  { key: 'reddit', label: 'Reddit', color: '#FF4500' },
+  { key: 'web', label: 'Web', color: '#4CAF50' },
+  { key: 'manual', label: 'Manual', color: '#7C6FE0' },
+];
 
 export default function SettingsScreen() {
   const { notes, folders, settings, updateSettings } = useNoteStore();
@@ -29,6 +40,21 @@ export default function SettingsScreen() {
   };
 
   const userFolders = folders.filter(f => !f.isSystem);
+
+  const platformCounts = notes.filter(n => !n.archived).reduce<Record<string, number>>((acc, n) => {
+    const p = n.platform || 'manual';
+    acc[p] = (acc[p] || 0) + 1;
+    return acc;
+  }, {});
+
+  const activeCount = notes.filter(n => !n.archived).length;
+  const archivedCount = notes.filter(n => n.archived).length;
+
+  const handleExportNotes = async () => {
+    const json = JSON.stringify(notes, null, 2);
+    await Clipboard.setStringAsync(json);
+    Alert.alert('Exported', 'All notes copied to clipboard as JSON');
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -56,6 +82,34 @@ export default function SettingsScreen() {
                 {notes.filter(n => n.pinned).length}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Pinned</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Notes by Platform */}
+        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>NOTES BY PLATFORM</Text>
+          {PLATFORM_STATS.map(p => (
+              <View key={p.key} style={styles.platformRow}>
+                <View style={[styles.platformDot, { backgroundColor: p.color }]} />
+                <Text style={[styles.platformLabel, { color: colors.textSecondary }]}>{p.label}</Text>
+                <Text style={[styles.platformCount, { color: colors.text }]}>{platformCounts[p.key] || 0}</Text>
+              </View>
+            ))}
+        </View>
+
+        {/* Notes by Status */}
+        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>NOTES BY STATUS</Text>
+          <View style={styles.statusRow}>
+            <View style={styles.stat}>
+              <Text style={[styles.statNumber, { color: colors.success }]}>{activeCount}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Active</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.stat}>
+              <Text style={[styles.statNumber, { color: colors.warning }]}>{archivedCount}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Archived</Text>
             </View>
           </View>
         </View>
@@ -94,6 +148,17 @@ export default function SettingsScreen() {
               <Text style={[styles.tipText, { color: colors.textSecondary }]}>{item.tip}</Text>
             </View>
           ))}
+        </View>
+
+        {/* Export */}
+        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>EXPORT</Text>
+          <TouchableOpacity
+            style={[styles.exportBtn, { borderColor: colors.accent + '44' }]}
+            onPress={handleExportNotes}
+          >
+            <Text style={[styles.exportBtnText, { color: colors.accent }]}>📋 Export Notes as JSON</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Danger zone */}
@@ -152,6 +217,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dangerBtnText: { fontSize: 15, fontWeight: '600' },
+  exportBtn: {
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  exportBtnText: { fontSize: 15, fontWeight: '600' },
+  platformRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  platformDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 10,
+  },
+  platformLabel: { flex: 1, fontSize: 14 },
+  platformCount: { fontSize: 14, fontWeight: '700' },
+  statusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
   secondary: { color: '#FF6584' },
   success: { color: '#4CAF50' },
 });

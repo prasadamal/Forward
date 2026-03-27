@@ -25,7 +25,7 @@ const PLATFORM_LABELS: Record<string, string> = {
 export default function AddNoteScreen() {
   const route = useRoute<RouteType>();
   const navigation = useNavigation<NavProp>();
-  const { addNote } = useNoteStore();
+  const { addNote, findNoteByUrl } = useNoteStore();
   const colors = Colors.dark;
 
   const [content, setContent] = useState(route.params?.initialContent || route.params?.initialUrl || '');
@@ -34,6 +34,11 @@ export default function AddNoteScreen() {
   const url = extractUrl(content);
   const platform = url ? detectPlatform(url) : 'manual';
   const { tags, folders } = extractTags(content);
+  const duplicateNote = url ? findNoteByUrl(url) : undefined;
+
+  const trimmedContent = content.trim();
+  const wordCount = trimmedContent ? trimmedContent.split(/\s+/).length : 0;
+  const charCount = content.length;
 
   const handleSave = async () => {
     if (!content.trim()) {
@@ -126,6 +131,16 @@ export default function AddNoteScreen() {
               )}
             </View>
           )}
+
+          {duplicateNote && (
+            <Text style={[styles.duplicateWarning, { color: colors.warning }]}>
+              ⚠️ A note with this URL already exists
+            </Text>
+          )}
+
+          <Text style={[styles.wordCount, { color: colors.textMuted }]}>
+            {wordCount} {wordCount === 1 ? 'word' : 'words'} · {charCount} {charCount === 1 ? 'char' : 'chars'}
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -173,4 +188,6 @@ const styles = StyleSheet.create({
   tag: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   tagText: { fontSize: 12, fontWeight: '500' },
   noTags: { fontSize: 13 },
+  duplicateWarning: { fontSize: 13, fontWeight: '600', marginTop: 12 },
+  wordCount: { fontSize: 12, textAlign: 'right', marginTop: 8 },
 });

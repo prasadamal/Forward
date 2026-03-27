@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   View, Text, FlatList, StyleSheet, SafeAreaView, StatusBar,
+  TouchableOpacity,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -32,6 +33,12 @@ export default function FolderDetailScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+
+      <View style={[styles.toolbar, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Text style={[styles.backBtnText, { color: colors.accent }]}>← Back</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <Text style={styles.emoji}>{folder.emoji}</Text>
@@ -70,6 +77,15 @@ export default function FolderDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  toolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  backBtn: { padding: 4 },
+  backBtnText: { fontSize: 16, fontWeight: '600' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

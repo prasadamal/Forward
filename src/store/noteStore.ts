@@ -27,6 +27,15 @@ const SYSTEM_FOLDERS: SmartFolder[] = [
     isSystem: true,
     color: '#FF6584',
   },
+  {
+    id: 'archived',
+    name: 'Archived',
+    emoji: '🗑️',
+    noteIds: [],
+    createdAt: new Date().toISOString(),
+    isSystem: true,
+    color: '#FF9800',
+  },
 ];
 
 interface NoteStore {
@@ -45,11 +54,15 @@ interface NoteStore {
   deleteFolder: (id: string) => Promise<void>;
   moveNoteToFolder: (noteId: string, folderId: string) => Promise<void>;
   removeNoteFromFolder: (noteId: string, folderId: string) => Promise<void>;
+  archiveNote: (id: string) => Promise<void>;
+  restoreNote: (id: string) => Promise<void>;
+  getArchivedNotes: () => Note[];
   searchNotes: (query: string) => Note[];
   updateSettings: (updates: Partial<AppSettings>) => Promise<void>;
   getNoteById: (id: string) => Note | undefined;
   getFolderById: (id: string) => SmartFolder | undefined;
   getNotesForFolder: (folderId: string) => Note[];
+  findNoteByUrl: (url: string) => Note | undefined;
 }
 
 function generateId(): string {
@@ -99,6 +112,7 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
       createdAt: now,
       updatedAt: now,
       pinned: false,
+      archived: false,
     };
 
     const state = get();
@@ -249,13 +263,55 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     await persist(updatedNotes, updatedFolders, state.settings);
   },
 
+  archiveNote: async (id) => {
+    const state = get();
+    const updatedNotes = state.notes.map(n =>
+      n.id === id ? { ...n, archived: true, archivedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } : n
+    );
+    const updatedFolders = state.folders.map(f => {
+      if (f.id === 'archived' && !f.noteIds.includes(id)) {
+        return { ...f, noteIds: [...f.noteIds, id] };
+      }
+      // Remove from other system folders when archiving
+      if (f.isSystem && f.id !== 'archived' && f.noteIds.includes(id)) {
+        return { ...f, noteIds: f.noteIds.filter(nid => nid !== id) };
+      }
+      return f;
+    });
+    set({ notes: updatedNotes, folders: updatedFolders });
+    await persist(updatedNotes, updatedFolders, state.settings);
+  },
+
+  restoreNote: async (id) => {
+    const state = get();
+    const updatedNotes = state.notes.map(n => {
+      if (n.id !== id) return n;
+      return { ...n, archived: false, archivedAt: undefined, updatedAt: new Date().toISOString() };
+    });
+    const updatedFolders = state.folders.map(f => {
+      if (f.id === 'archived') {
+        return { ...f, noteIds: f.noteIds.filter(nid => nid !== id) };
+      }
+      // Add back to "All Notes" on restore
+      if (f.id === 'all' && !f.noteIds.includes(id)) {
+        return { ...f, noteIds: [...f.noteIds, id] };
+      }
+      return f;
+    });
+    set({ notes: updatedNotes, folders: updatedFolders });
+    await persist(updatedNotes, updatedFolders, state.settings);
+  },
+
+  getArchivedNotes: () => get().notes.filter(n => n.archived),
+
   searchNotes: (query) => {
     const lower = query.toLowerCase();
     return get().notes.filter(
       n =>
-        n.title.toLowerCase().includes(lower) ||
+        !n.archived &&
+        (n.title.toLowerCase().includes(lower) ||
         n.content.toLowerCase().includes(lower) ||
-        n.tags.some(t => t.includes(lower))
+        n.tags.some(t => t.includes(lower)))
     );
   },
 
@@ -273,6 +329,9 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     const folder = folders.find(f => f.id === folderId);
     if (!folder) return [];
     return notes.filter(n => folder.noteIds.includes(n.id));
+  },
+  findNoteByUrl: (url) => {
+    return get().notes.find(n => !n.archived && n.url === url);
   },
 }));
 
