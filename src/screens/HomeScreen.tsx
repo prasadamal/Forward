@@ -30,7 +30,8 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const colors = Colors.dark;
 
-  const filtered = filter === 'all' ? notes : notes.filter(n => n.platform === filter);
+  const activeNotes = notes.filter(n => !n.archived);
+  const filtered = filter === 'all' ? activeNotes : activeNotes.filter(n => n.platform === filter);
   const sorted = [...filtered].sort((a, b) => {
     if (a.pinned && !b.pinned) return -1;
     if (!a.pinned && b.pinned) return 1;
@@ -51,7 +52,7 @@ export default function HomeScreen() {
         <View>
           <Text style={[styles.appName, { color: colors.text }]}>Forward</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {notes.length} {notes.length === 1 ? 'note' : 'notes'} saved
+            {activeNotes.length} {activeNotes.length === 1 ? 'note' : 'notes'} saved
           </Text>
         </View>
         <View style={styles.headerActions}>

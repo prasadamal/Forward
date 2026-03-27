@@ -13,6 +13,8 @@ export interface Note {
   updatedAt: string;
   pinned: boolean;
   color?: string;
+  archived: boolean;
+  archivedAt?: string;
 }
 
 export interface SmartFolder {

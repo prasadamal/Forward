@@ -25,7 +25,7 @@ const PLATFORM_COLORS: Record<string, string> = {
 export default function NoteDetailScreen() {
   const route = useRoute<RouteType>();
   const navigation = useNavigation<NavProp>();
-  const { getNoteById, deleteNote, togglePin, getFolderById } = useNoteStore();
+  const { getNoteById, deleteNote, archiveNote, restoreNote, togglePin, getFolderById } = useNoteStore();
   const colors = Colors.dark;
 
   const note = getNoteById(route.params.noteId);
@@ -40,14 +40,29 @@ export default function NoteDetailScreen() {
 
   const platformColor = PLATFORM_COLORS[note.platform || 'manual'];
 
-  const handleDelete = () => {
-    Alert.alert('Delete Note', 'This note will be permanently deleted.', [
+  const handleArchive = () => {
+    Alert.alert('Archive Note', 'This note will be moved to the Archived folder.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Archive', style: 'destructive',
+        onPress: () => { archiveNote(note.id); navigation.goBack(); },
+      },
+    ]);
+  };
+
+  const handlePermanentDelete = () => {
+    Alert.alert('Permanently Delete', 'This note will be permanently deleted. This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete', style: 'destructive',
         onPress: () => { deleteNote(note.id); navigation.goBack(); },
       },
     ]);
+  };
+
+  const handleRestore = () => {
+    restoreNote(note.id);
+    navigation.goBack();
   };
 
   const handleOpenLink = () => {
@@ -67,15 +82,28 @@ export default function NoteDetailScreen() {
           <TouchableOpacity onPress={() => togglePin(note.id)} style={styles.toolBtn}>
             <Text style={styles.toolBtnText}>{note.pinned ? '📌' : '📍'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('EditNote', { noteId: note.id })}
-            style={styles.toolBtn}
-          >
-            <Text style={[styles.toolBtnLabel, { color: colors.accent }]}>Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleDelete} style={styles.toolBtn}>
-            <Text style={[styles.toolBtnLabel, { color: colors.error }]}>Delete</Text>
-          </TouchableOpacity>
+          {note.archived ? (
+            <>
+              <TouchableOpacity onPress={handleRestore} style={styles.toolBtn}>
+                <Text style={[styles.toolBtnLabel, { color: colors.accent }]}>Restore</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handlePermanentDelete} style={styles.toolBtn}>
+                <Text style={[styles.toolBtnLabel, { color: colors.error }]}>Delete</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('EditNote', { noteId: note.id })}
+                style={styles.toolBtn}
+              >
+                <Text style={[styles.toolBtnLabel, { color: colors.accent }]}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleArchive} style={styles.toolBtn}>
+                <Text style={[styles.toolBtnLabel, { color: colors.error }]}>Archive</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
 
