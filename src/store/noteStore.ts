@@ -286,8 +286,7 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     const state = get();
     const updatedNotes = state.notes.map(n => {
       if (n.id !== id) return n;
-      const { archivedAt, ...rest } = n;
-      return { ...rest, archived: false, updatedAt: new Date().toISOString() };
+      return { ...n, archived: false, archivedAt: undefined, updatedAt: new Date().toISOString() };
     });
     const updatedFolders = state.folders.map(f => {
       if (f.id === 'archived') {

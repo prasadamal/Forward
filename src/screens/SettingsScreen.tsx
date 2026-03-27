@@ -41,7 +41,7 @@ export default function SettingsScreen() {
 
   const userFolders = folders.filter(f => !f.isSystem);
 
-  const platformCounts = notes.reduce<Record<string, number>>((acc, n) => {
+  const platformCounts = notes.filter(n => !n.archived).reduce<Record<string, number>>((acc, n) => {
     const p = n.platform || 'manual';
     acc[p] = (acc[p] || 0) + 1;
     return acc;

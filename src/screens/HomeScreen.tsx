@@ -48,7 +48,7 @@ export default function HomeScreen() {
       case 'oldest':
         return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       case 'az':
-        return a.title.localeCompare(b.title);
+        return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
       default:
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     }

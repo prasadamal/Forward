@@ -36,7 +36,8 @@ export default function AddNoteScreen() {
   const { tags, folders } = extractTags(content);
   const duplicateNote = url ? findNoteByUrl(url) : undefined;
 
-  const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+  const trimmedContent = content.trim();
+  const wordCount = trimmedContent ? trimmedContent.split(/\s+/).length : 0;
   const charCount = content.length;
 
   const handleSave = async () => {
