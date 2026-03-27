@@ -9,6 +9,15 @@ import { Colors } from '../constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform as PlatformType } from '../types';
 
+const PLATFORM_STATS: { key: PlatformType; label: string; color: string }[] = [
+  { key: 'youtube', label: 'YouTube', color: '#FF0000' },
+  { key: 'instagram', label: 'Instagram', color: '#C13584' },
+  { key: 'twitter', label: 'Twitter', color: '#1DA1F2' },
+  { key: 'reddit', label: 'Reddit', color: '#FF4500' },
+  { key: 'web', label: 'Web', color: '#4CAF50' },
+  { key: 'manual', label: 'Manual', color: '#7C6FE0' },
+];
+
 export default function SettingsScreen() {
   const { notes, folders, settings, updateSettings } = useNoteStore();
   const colors = Colors.dark;
@@ -32,14 +41,11 @@ export default function SettingsScreen() {
 
   const userFolders = folders.filter(f => !f.isSystem);
 
-  const PLATFORM_STATS: { key: PlatformType; label: string; color: string }[] = [
-    { key: 'youtube', label: 'YouTube', color: '#FF0000' },
-    { key: 'instagram', label: 'Instagram', color: '#C13584' },
-    { key: 'twitter', label: 'Twitter', color: '#1DA1F2' },
-    { key: 'reddit', label: 'Reddit', color: '#FF4500' },
-    { key: 'web', label: 'Web', color: '#4CAF50' },
-    { key: 'manual', label: 'Manual', color: '#7C6FE0' },
-  ];
+  const platformCounts = notes.reduce<Record<string, number>>((acc, n) => {
+    const p = n.platform || 'manual';
+    acc[p] = (acc[p] || 0) + 1;
+    return acc;
+  }, {});
 
   const activeCount = notes.filter(n => !n.archived).length;
   const archivedCount = notes.filter(n => n.archived).length;
@@ -83,16 +89,13 @@ export default function SettingsScreen() {
         {/* Notes by Platform */}
         <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>NOTES BY PLATFORM</Text>
-          {PLATFORM_STATS.map(p => {
-            const count = notes.filter(n => n.platform === p.key).length;
-            return (
+          {PLATFORM_STATS.map(p => (
               <View key={p.key} style={styles.platformRow}>
                 <View style={[styles.platformDot, { backgroundColor: p.color }]} />
                 <Text style={[styles.platformLabel, { color: colors.textSecondary }]}>{p.label}</Text>
-                <Text style={[styles.platformCount, { color: colors.text }]}>{count}</Text>
+                <Text style={[styles.platformCount, { color: colors.text }]}>{platformCounts[p.key] || 0}</Text>
               </View>
-            );
-          })}
+            ))}
         </View>
 
         {/* Notes by Status */}
