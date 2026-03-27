@@ -267,11 +267,16 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     const updatedNotes = state.notes.map(n =>
       n.id === id ? { ...n, archived: true, archivedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } : n
     );
-    const updatedFolders = state.folders.map(f =>
-      f.id === 'archived' && !f.noteIds.includes(id)
-        ? { ...f, noteIds: [...f.noteIds, id] }
-        : f
-    );
+    const updatedFolders = state.folders.map(f => {
+      if (f.id === 'archived' && !f.noteIds.includes(id)) {
+        return { ...f, noteIds: [...f.noteIds, id] };
+      }
+      // Remove from other system folders when archiving
+      if (f.isSystem && f.id !== 'archived' && f.noteIds.includes(id)) {
+        return { ...f, noteIds: f.noteIds.filter(nid => nid !== id) };
+      }
+      return f;
+    });
     set({ notes: updatedNotes, folders: updatedFolders });
     await persist(updatedNotes, updatedFolders, state.settings);
   },
@@ -283,9 +288,16 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
       const { archivedAt, ...rest } = n;
       return { ...rest, archived: false, updatedAt: new Date().toISOString() };
     });
-    const updatedFolders = state.folders.map(f =>
-      f.id === 'archived' ? { ...f, noteIds: f.noteIds.filter(nid => nid !== id) } : f
-    );
+    const updatedFolders = state.folders.map(f => {
+      if (f.id === 'archived') {
+        return { ...f, noteIds: f.noteIds.filter(nid => nid !== id) };
+      }
+      // Add back to "All Notes" on restore
+      if (f.id === 'all' && !f.noteIds.includes(id)) {
+        return { ...f, noteIds: [...f.noteIds, id] };
+      }
+      return f;
+    });
     set({ notes: updatedNotes, folders: updatedFolders });
     await persist(updatedNotes, updatedFolders, state.settings);
   },

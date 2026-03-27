@@ -61,8 +61,13 @@ export default function NoteDetailScreen() {
   };
 
   const handleRestore = () => {
-    restoreNote(note.id);
-    navigation.goBack();
+    Alert.alert('Restore Note', 'This note will be restored from the archive.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Restore',
+        onPress: () => { restoreNote(note.id); navigation.goBack(); },
+      },
+    ]);
   };
 
   const handleOpenLink = () => {
