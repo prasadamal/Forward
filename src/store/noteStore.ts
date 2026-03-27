@@ -62,6 +62,7 @@ interface NoteStore {
   getNoteById: (id: string) => Note | undefined;
   getFolderById: (id: string) => SmartFolder | undefined;
   getNotesForFolder: (folderId: string) => Note[];
+  findNoteByUrl: (url: string) => Note | undefined;
 }
 
 function generateId(): string {
@@ -329,6 +330,9 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     const folder = folders.find(f => f.id === folderId);
     if (!folder) return [];
     return notes.filter(n => folder.noteIds.includes(n.id));
+  },
+  findNoteByUrl: (url) => {
+    return get().notes.find(n => !n.archived && n.url === url);
   },
 }));
 

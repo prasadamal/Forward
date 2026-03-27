@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View, Text, ScrollView, StyleSheet, SafeAreaView, StatusBar,
-  TouchableOpacity, Alert, Linking,
+  TouchableOpacity, Alert, Linking, Share,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Clipboard from 'expo-clipboard';
 import { useNoteStore } from '../store/noteStore';
 import { Colors } from '../constants/colors';
 import { RootStackParamList } from '../types';
@@ -74,6 +75,21 @@ export default function NoteDetailScreen() {
     if (note.url) Linking.openURL(note.url).catch(() => {});
   };
 
+  const handleCopy = async () => {
+    const text = note.url ? `${note.content}\n\n${note.url}` : note.content;
+    await Clipboard.setStringAsync(text);
+    Alert.alert('Copied', 'Note copied to clipboard');
+  };
+
+  const handleShare = async () => {
+    const text = note.url ? `${note.content}\n\n${note.url}` : note.content;
+    try {
+      await Share.share({ message: text });
+    } catch {
+      // user cancelled
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
@@ -86,6 +102,12 @@ export default function NoteDetailScreen() {
         <View style={styles.toolbarActions}>
           <TouchableOpacity onPress={() => togglePin(note.id)} style={styles.toolBtn}>
             <Text style={styles.toolBtnText}>{note.pinned ? '📌' : '📍'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleCopy} style={styles.toolBtn}>
+            <Text style={[styles.toolBtnLabel, { color: colors.accent }]}>Copy</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleShare} style={styles.toolBtn}>
+            <Text style={[styles.toolBtnLabel, { color: colors.accent }]}>Share</Text>
           </TouchableOpacity>
           {note.archived ? (
             <>

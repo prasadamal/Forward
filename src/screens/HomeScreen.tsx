@@ -23,10 +23,19 @@ const FILTERS = [
   { label: '✎ Manual', value: 'manual' },
 ];
 
+type SortOption = 'newest' | 'oldest' | 'az';
+
+const SORT_OPTIONS: { label: string; value: SortOption }[] = [
+  { label: 'Newest', value: 'newest' },
+  { label: 'Oldest', value: 'oldest' },
+  { label: 'A-Z Title', value: 'az' },
+];
+
 export default function HomeScreen() {
   const navigation = useNavigation<NavProp>();
-  const { notes } = useNoteStore();
+  const { notes, togglePin } = useNoteStore();
   const [filter, setFilter] = useState('all');
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [refreshing, setRefreshing] = useState(false);
   const colors = Colors.dark;
 
@@ -35,7 +44,14 @@ export default function HomeScreen() {
   const sorted = [...filtered].sort((a, b) => {
     if (a.pinned && !b.pinned) return -1;
     if (!a.pinned && b.pinned) return 1;
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    switch (sortBy) {
+      case 'oldest':
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      case 'az':
+        return a.title.localeCompare(b.title);
+      default:
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
   });
 
   const onRefresh = useCallback(() => {
@@ -95,6 +111,32 @@ export default function HomeScreen() {
         )}
       />
 
+      {/* Sort Row */}
+      <View style={styles.sortRow}>
+        {SORT_OPTIONS.map(opt => (
+          <TouchableOpacity
+            key={opt.value}
+            style={[
+              styles.sortChip,
+              {
+                backgroundColor: sortBy === opt.value ? colors.accent + '22' : 'transparent',
+                borderColor: sortBy === opt.value ? colors.accent : colors.border,
+              },
+            ]}
+            onPress={() => setSortBy(opt.value)}
+          >
+            <Text
+              style={[
+                styles.sortChipText,
+                { color: sortBy === opt.value ? colors.accent : colors.textMuted },
+              ]}
+            >
+              {opt.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {/* Notes List */}
       {sorted.length === 0 ? (
         <EmptyState
@@ -121,6 +163,7 @@ export default function HomeScreen() {
             <NoteCard
               note={item}
               onPress={() => navigation.navigate('NoteDetail', { noteId: item.id })}
+              onLongPress={() => togglePin(item.id)}
               theme="dark"
             />
           )}
@@ -168,6 +211,19 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     gap: 8,
   },
+  sortRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  sortChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  sortChipText: { fontSize: 12, fontWeight: '500' },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 7,
