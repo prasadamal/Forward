@@ -39,12 +39,20 @@ Multiple overlapping folders are supported — a "Chennai food spot" note appear
 ## 🛠 Tech Stack
 
 - **React Native + Expo SDK 55**
-- **React Navigation v6** (Bottom Tabs + Native Stack)
+- **React Navigation v7** (Bottom Tabs + Native Stack)
 - **Zustand** for state management
 - **AsyncStorage** for persistence
 - **TypeScript** throughout
 
 ## 🚀 Getting Started
+
+### Prerequisites
+
+- **Node.js >= 20.19.4** (required by React Native 0.83 and Metro)
+  - Download from https://nodejs.org/en/download
+  - Or use [nvm](https://github.com/nvm-sh/nvm): `nvm install` (reads `.nvmrc`)
+
+### Install & Run
 
 ```bash
 npm install
