@@ -89,7 +89,8 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
       } else {
         set({ isLoading: false });
       }
-    } catch {
+    } catch (e) {
+      console.warn('Failed to load data from storage:', e);
       set({ isLoading: false });
     }
   },
@@ -338,7 +339,7 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
 async function persist(notes: Note[], folders: SmartFolder[], settings: AppSettings) {
   try {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ notes, folders, settings }));
-  } catch {
-    // ignore persist errors silently
+  } catch (e) {
+    console.warn('Failed to persist data to storage:', e);
   }
 }

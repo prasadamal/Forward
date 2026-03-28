@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text } from 'react-native';
 import { Colors } from '../constants/colors';
 import { RootTabParamList } from '../types';
+import { useNoteStore } from '../store/noteStore';
 import HomeScreen from '../screens/HomeScreen';
 import FoldersScreen from '../screens/FoldersScreen';
 import SearchScreen from '../screens/SearchScreen';
@@ -18,7 +19,8 @@ const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
 };
 
 export default function TabNavigator() {
-  const colors = Colors.dark;
+  const settings = useNoteStore(state => state.settings);
+  const colors = Colors[settings.theme === 'light' ? 'light' : 'dark'];
 
   return (
     <Tab.Navigator

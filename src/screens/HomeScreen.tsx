@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   SafeAreaView, StatusBar, RefreshControl,
@@ -33,11 +33,12 @@ const SORT_OPTIONS: { label: string; value: SortOption }[] = [
 
 export default function HomeScreen() {
   const navigation = useNavigation<NavProp>();
-  const { notes, togglePin } = useNoteStore();
+  const { notes, togglePin, settings } = useNoteStore();
   const [filter, setFilter] = useState('all');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [refreshing, setRefreshing] = useState(false);
-  const colors = Colors.dark;
+  const colors = Colors[settings.theme === 'light' ? 'light' : 'dark'];
+  const theme = settings.theme === 'light' ? 'light' : 'dark' as const;
 
   const activeNotes = notes.filter(n => !n.archived);
   const filtered = filter === 'all' ? activeNotes : activeNotes.filter(n => n.platform === filter);
@@ -54,14 +55,22 @@ export default function HomeScreen() {
     }
   });
 
+  const refreshTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    };
+  }, []);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 500);
+    refreshTimer.current = setTimeout(() => setRefreshing(false), 500);
   }, []);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
 
       {/* Header */}
       <View style={styles.header}>
@@ -145,7 +154,7 @@ export default function HomeScreen() {
           description="Share any link, text, or thought from any app — Forward will smart-organize it for you."
           actionLabel="Add Your First Note"
           onAction={() => navigation.navigate('AddNote', {})}
-          theme="dark"
+          theme={theme}
         />
       ) : (
         <FlatList
@@ -164,7 +173,7 @@ export default function HomeScreen() {
               note={item}
               onPress={() => navigation.navigate('NoteDetail', { noteId: item.id })}
               onLongPress={() => togglePin(item.id)}
-              theme="dark"
+              theme={theme}
             />
           )}
         />
