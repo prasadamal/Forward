@@ -242,6 +242,4 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     alignItems: 'center',
   },
-  secondary: { color: '#FF6584' },
-  success: { color: '#4CAF50' },
 });
