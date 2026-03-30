@@ -15,10 +15,11 @@ type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function FoldersScreen() {
   const navigation = useNavigation<NavProp>();
-  const { folders, createFolder, deleteFolder } = useNoteStore();
+  const { folders, createFolder, deleteFolder, settings } = useNoteStore();
   const [showCreate, setShowCreate] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
-  const colors = Colors.dark;
+  const colors = Colors[settings.theme === 'light' ? 'light' : 'dark'];
+  const theme = settings.theme === 'light' ? 'light' : 'dark' as const;
 
   const userFolders = folders.filter(f => !f.isSystem);
   const systemFolders = folders.filter(f => f.isSystem);
@@ -41,7 +42,7 @@ export default function FoldersScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
 
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Smart Folders</Text>
@@ -58,7 +59,7 @@ export default function FoldersScreen() {
           icon="📁"
           title="No folders yet"
           description="Add notes and Forward will auto-create smart folders for locations and topics."
-          theme="dark"
+          theme={theme}
         />
       ) : (
         <FlatList
@@ -71,7 +72,7 @@ export default function FoldersScreen() {
               <FolderCard
                 folder={item}
                 onPress={() => navigation.navigate('FolderDetail', { folderId: item.id })}
-                theme="dark"
+                theme={theme}
               />
               {!item.isSystem && (
                 <TouchableOpacity

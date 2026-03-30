@@ -17,8 +17,9 @@ type NavProp = NativeStackNavigationProp<RootStackParamList>;
 export default function FolderDetailScreen() {
   const route = useRoute<RouteType>();
   const navigation = useNavigation<NavProp>();
-  const { getFolderById, getNotesForFolder } = useNoteStore();
-  const colors = Colors.dark;
+  const { getFolderById, getNotesForFolder, settings } = useNoteStore();
+  const colors = Colors[settings.theme === 'light' ? 'light' : 'dark'];
+  const theme = settings.theme === 'light' ? 'light' : 'dark' as const;
 
   const folder = getFolderById(route.params.folderId);
   const notes = getNotesForFolder(route.params.folderId);
@@ -28,11 +29,23 @@ export default function FolderDetailScreen() {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
-  if (!folder) return null;
+  if (!folder) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+        <View style={[styles.toolbar, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Text style={[styles.backBtnText, { color: colors.accent }]}>← Back</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={{ color: colors.text, padding: 20 }}>Folder not found.</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
 
       <View style={[styles.toolbar, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -55,7 +68,7 @@ export default function FolderDetailScreen() {
           icon="📭"
           title="No notes here"
           description="Notes matching this folder's topic will appear here automatically."
-          theme="dark"
+          theme={theme}
         />
       ) : (
         <FlatList
@@ -66,7 +79,7 @@ export default function FolderDetailScreen() {
             <NoteCard
               note={item}
               onPress={() => navigation.navigate('NoteDetail', { noteId: item.id })}
-              theme="dark"
+              theme={theme}
             />
           )}
         />

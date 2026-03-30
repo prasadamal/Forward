@@ -6,14 +6,15 @@ import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
   const loadData = useNoteStore(state => state.loadData);
+  const theme = useNoteStore(state => state.settings.theme);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   return (
     <NavigationContainer>
-      <StatusBar style="light" />
+      <StatusBar style={theme === 'light' ? 'dark' : 'light'} />
       <AppNavigator />
     </NavigationContainer>
   );

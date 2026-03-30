@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, TextInput, ScrollView, StyleSheet, SafeAreaView,
   StatusBar, TouchableOpacity, Alert, KeyboardAvoidingView, Platform,
@@ -25,8 +25,9 @@ const PLATFORM_LABELS: Record<string, string> = {
 export default function AddNoteScreen() {
   const route = useRoute<RouteType>();
   const navigation = useNavigation<NavProp>();
-  const { addNote, findNoteByUrl } = useNoteStore();
-  const colors = Colors.dark;
+  const { addNote, findNoteByUrl, settings } = useNoteStore();
+  const colors = Colors[settings.theme === 'light' ? 'light' : 'dark'];
+  const theme = settings.theme === 'light' ? 'light' : 'dark' as const;
 
   const [content, setContent] = useState(route.params?.initialContent || route.params?.initialUrl || '');
   const [saving, setSaving] = useState(false);
@@ -53,7 +54,7 @@ export default function AddNoteScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

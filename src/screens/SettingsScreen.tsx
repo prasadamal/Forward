@@ -20,7 +20,8 @@ const PLATFORM_STATS: { key: PlatformType; label: string; color: string }[] = [
 
 export default function SettingsScreen() {
   const { notes, folders, settings, updateSettings } = useNoteStore();
-  const colors = Colors.dark;
+  const colors = Colors[settings.theme === 'light' ? 'light' : 'dark'];
+  const theme = settings.theme === 'light' ? 'light' : 'dark' as const;
 
   const handleClearAll = () => {
     Alert.alert(
@@ -58,7 +59,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
 
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
@@ -242,6 +243,4 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     alignItems: 'center',
   },
-  secondary: { color: '#FF6584' },
-  success: { color: '#4CAF50' },
 });

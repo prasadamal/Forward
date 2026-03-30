@@ -15,8 +15,9 @@ type NavProp = NativeStackNavigationProp<RootStackParamList>;
 export default function EditNoteScreen() {
   const route = useRoute<RouteType>();
   const navigation = useNavigation<NavProp>();
-  const { getNoteById, editNote } = useNoteStore();
-  const colors = Colors.dark;
+  const { getNoteById, editNote, settings } = useNoteStore();
+  const colors = Colors[settings.theme === 'light' ? 'light' : 'dark'];
+  const theme = settings.theme === 'light' ? 'light' : 'dark' as const;
 
   const note = getNoteById(route.params.noteId);
   const [content, setContent] = useState(note?.content || '');
@@ -43,7 +44,7 @@ export default function EditNoteScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

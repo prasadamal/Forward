@@ -14,15 +14,16 @@ type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function SearchScreen() {
   const navigation = useNavigation<NavProp>();
-  const { searchNotes } = useNoteStore();
+  const { searchNotes, settings } = useNoteStore();
   const [query, setQuery] = useState('');
-  const colors = Colors.dark;
+  const colors = Colors[settings.theme === 'light' ? 'light' : 'dark'];
+  const theme = settings.theme === 'light' ? 'light' : 'dark' as const;
 
   const results = query.trim().length > 1 ? searchNotes(query) : [];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
 
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Search</Text>
@@ -69,7 +70,7 @@ export default function SearchScreen() {
             <NoteCard
               note={item}
               onPress={() => navigation.navigate('NoteDetail', { noteId: item.id })}
-              theme="dark"
+              theme={theme}
             />
           )}
         />

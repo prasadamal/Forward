@@ -26,10 +26,11 @@ const PLATFORM_COLORS: Record<string, string> = {
 export default function NoteDetailScreen() {
   const route = useRoute<RouteType>();
   const navigation = useNavigation<NavProp>();
-  const { getNoteById, deleteNote, archiveNote, restoreNote, togglePin, getFolderById } = useNoteStore();
-  const colors = Colors.dark;
+  const { getNoteById, deleteNote, archiveNote, restoreNote, togglePin, getFolderById, settings } = useNoteStore();
+  const colors = Colors[settings.theme === 'light' ? 'light' : 'dark'];
 
   const note = getNoteById(route.params.noteId);
+  const theme = settings.theme === 'light' ? 'light' : 'dark' as const;
 
   if (!note) {
     return (
@@ -92,7 +93,7 @@ export default function NoteDetailScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
 
       {/* Top actions */}
       <View style={[styles.toolbar, { borderBottomColor: colors.border }]}>
