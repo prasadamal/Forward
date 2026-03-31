@@ -151,7 +151,8 @@ export function detectPlatform(url: string): Platform {
   return 'manual';
 }
 
-const URL_REGEX = /(https?:\/\/[^\s]+)/g;
+// More precise URL regex that excludes trailing punctuation
+const URL_REGEX = /(https?:\/\/[^\s]+?)(?=[.,;:!?)\]}\s]|$)/g;
 
 export function extractUrl(text: string): string | undefined {
   const matches = text.match(URL_REGEX);

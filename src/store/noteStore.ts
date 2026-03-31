@@ -44,7 +44,6 @@ function buildSystemFolders(): SmartFolder[] {
 function buildDefaultSettings(): AppSettings {
   return {
     theme: 'dark',
-    defaultView: 'notes',
     defaultSort: 'newest',
     recentSearches: [],
   };
@@ -106,7 +105,6 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
           folders: folders || buildSystemFolders(),
           settings: {
             theme: storedSettings.theme || 'dark',
-            defaultView: storedSettings.defaultView || 'notes',
             defaultSort: normalizeDefaultSort(storedSettings.defaultSort),
             recentSearches: storedSettings.recentSearches || [],
           },
@@ -300,15 +298,20 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
 
   archiveNote: async (id) => {
     const state = get();
+    const note = state.notes.find(n => n.id === id);
     const updatedNotes = state.notes.map(n =>
-      n.id === id ? { ...n, archived: true, archivedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } : n
+      n.id === id ? { ...n, archived: true, pinned: false, archivedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } : n
     );
     const updatedFolders = state.folders.map(f => {
       if (f.id === 'archived' && !f.noteIds.includes(id)) {
         return { ...f, noteIds: [...f.noteIds, id] };
       }
-      // Remove from other system folders when archiving
+      // Remove from system folders when archiving (including pinned)
       if (f.isSystem && f.id !== 'archived' && f.noteIds.includes(id)) {
+        return { ...f, noteIds: f.noteIds.filter(nid => nid !== id) };
+      }
+      // Also remove from custom folders when archiving
+      if (!f.isSystem && f.noteIds.includes(id)) {
         return { ...f, noteIds: f.noteIds.filter(nid => nid !== id) };
       }
       return f;
@@ -319,6 +322,9 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
 
   restoreNote: async (id) => {
     const state = get();
+    const note = state.notes.find(n => n.id === id);
+    if (!note) return;
+
     const updatedNotes = state.notes.map(n => {
       if (n.id !== id) return n;
       return { ...n, archived: false, archivedAt: undefined, updatedAt: new Date().toISOString() };
@@ -329,6 +335,14 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
       }
       // Add back to "All Notes" on restore
       if (f.id === 'all' && !f.noteIds.includes(id)) {
+        return { ...f, noteIds: [...f.noteIds, id] };
+      }
+      // Restore to custom folders that note belongs to
+      if (!f.isSystem && note.folderIds.includes(f.id) && !f.noteIds.includes(id)) {
+        return { ...f, noteIds: [...f.noteIds, id] };
+      }
+      // Restore to pinned folder if note was pinned
+      if (f.id === 'pinned' && note.pinned && !f.noteIds.includes(id)) {
         return { ...f, noteIds: [...f.noteIds, id] };
       }
       return f;
@@ -385,7 +399,8 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     const { notes, folders } = get();
     const folder = folders.find(f => f.id === folderId);
     if (!folder) return [];
-    return notes.filter(n => folder.noteIds.includes(n.id));
+    // Filter out archived notes unless viewing the archived folder
+    return notes.filter(n => folder.noteIds.includes(n.id) && (folderId === 'archived' || !n.archived));
   },
   findNoteByUrl: (url) => {
     return get().notes.find(n => !n.archived && n.url === url);

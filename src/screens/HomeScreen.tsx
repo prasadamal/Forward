@@ -103,7 +103,7 @@ export default function HomeScreen() {
         <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
         <View style={styles.statItem}>
           <Text style={[styles.statNum, { color: colors.secondary }]}>
-            {notes.filter(n => n.pinned).length}
+            {notes.filter(n => n.pinned && !n.archived).length}
           </Text>
           <Text style={[styles.statLbl, { color: colors.textMuted }]}>pinned</Text>
         </View>
