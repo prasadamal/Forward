@@ -82,12 +82,21 @@ export default function ShareReceivedScreen() {
     setShowPicker(false);
     setSaving(true);
     try {
-      const note = await addNote(buildNoteContent());
-      // Move to each selected folder
-      for (const folderId of selectedFolderIds) {
-        await moveNoteToFolder(note.id, folderId);
+      // Check for duplicate before creating note
+      if (duplicate) {
+        // Move existing note to selected folders
+        for (const folderId of selectedFolderIds) {
+          await moveNoteToFolder(duplicate.id, folderId);
+        }
+        setSavedNoteId(duplicate.id);
+      } else {
+        // Create new note and move to selected folders
+        const note = await addNote(buildNoteContent());
+        for (const folderId of selectedFolderIds) {
+          await moveNoteToFolder(note.id, folderId);
+        }
+        setSavedNoteId(note.id);
       }
-      setSavedNoteId(note.id);
     } catch (error) {
       console.error('[ShareReceivedScreen] Failed to save note to folders', error);
       Alert.alert('Save Error', 'The note was created but some folder assignments may have failed.');

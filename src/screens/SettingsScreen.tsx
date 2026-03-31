@@ -136,7 +136,7 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>YOUR DATA</Text>
           <View style={styles.statsRow}>
             <View style={styles.stat}>
-              <Text style={[styles.statNumber, { color: colors.accent }]}>{notes.length}</Text>
+              <Text style={[styles.statNumber, { color: colors.accent }]}>{notes.filter(n => !n.archived).length}</Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total</Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
@@ -147,7 +147,7 @@ export default function SettingsScreen() {
             <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
             <View style={styles.stat}>
               <Text style={[styles.statNumber, { color: colors.success }]}>
-                {notes.filter(n => n.pinned).length}
+                {notes.filter(n => n.pinned && !n.archived).length}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Pinned</Text>
             </View>

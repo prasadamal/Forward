@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, SafeAreaView, StatusBar,
   TouchableOpacity, Alert, Linking, Share,
@@ -11,6 +11,7 @@ import { useTheme } from '../hooks/useTheme';
 import { PLATFORM_COLORS } from '../constants/colors';
 import { RootStackParamList } from '../types';
 import { formatFullDate } from '../utils/dateUtils';
+import FolderPicker from '../components/FolderPicker';
 
 type RouteType = RouteProp<RootStackParamList, 'NoteDetail'>;
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
@@ -18,8 +19,11 @@ type NavProp = NativeStackNavigationProp<RootStackParamList>;
 export default function NoteDetailScreen() {
   const route = useRoute<RouteType>();
   const navigation = useNavigation<NavProp>();
-  const { getNoteById, deleteNote, archiveNote, restoreNote, togglePin, getFolderById } = useNoteStore();
+  const { getNoteById, deleteNote, archiveNote, restoreNote, togglePin, getFolderById, folders, moveNoteToFolder, removeNoteFromFolder } = useNoteStore();
   const { colors } = useTheme();
+
+  const [showFolderPicker, setShowFolderPicker] = useState(false);
+  const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
 
   const note = getNoteById(route.params.noteId);
 
@@ -111,6 +115,33 @@ export default function NoteDetailScreen() {
       await Share.share({ message: text });
     } catch {
       // user cancelled
+    }
+  };
+
+  const handleManageFolders = () => {
+    setSelectedFolderIds(note.folderIds);
+    setShowFolderPicker(true);
+  };
+
+  const toggleFolder = (id: string) => {
+    setSelectedFolderIds(prev =>
+      prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]
+    );
+  };
+
+  const handleFolderPickerConfirm = async () => {
+    setShowFolderPicker(false);
+    // Remove folders that are no longer selected
+    for (const fid of note.folderIds) {
+      if (!selectedFolderIds.includes(fid)) {
+        await removeNoteFromFolder(note.id, fid);
+      }
+    }
+    // Add newly selected folders
+    for (const fid of selectedFolderIds) {
+      if (!note.folderIds.includes(fid)) {
+        await moveNoteToFolder(note.id, fid);
+      }
     }
   };
 
@@ -228,9 +259,14 @@ export default function NoteDetailScreen() {
         )}
 
         {/* Folders */}
-        {note.folderIds.length > 0 && (
-          <View style={styles.section}>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>In Folders</Text>
+            <TouchableOpacity onPress={handleManageFolders}>
+              <Text style={[styles.manageBtn, { color: colors.accent }]}>Manage</Text>
+            </TouchableOpacity>
+          </View>
+          {note.folderIds.length > 0 ? (
             <View style={styles.tagsRow}>
               {note.folderIds.map(fid => {
                 const folder = getFolderById(fid);
@@ -248,9 +284,23 @@ export default function NoteDetailScreen() {
                 );
               })}
             </View>
-          </View>
-        )}
+          ) : (
+            <Text style={[styles.noFolders, { color: colors.textMuted }]}>
+              No custom folders. Tap "Manage" to add to folders.
+            </Text>
+          )}
+        </View>
       </ScrollView>
+
+      {/* Folder Picker Modal */}
+      <FolderPicker
+        visible={showFolderPicker}
+        folders={folders}
+        selectedIds={selectedFolderIds}
+        onToggle={toggleFolder}
+        onConfirm={handleFolderPickerConfirm}
+        onCancel={() => setShowFolderPicker(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -310,7 +360,14 @@ const styles = StyleSheet.create({
   urlText: { fontSize: 14, fontWeight: '500', marginBottom: 8, lineHeight: 20 },
   urlOpen: { fontSize: 12 },
   section: { marginBottom: 20 },
-  sectionTitle: { fontSize: 13, fontWeight: '600', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  sectionTitle: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  manageBtn: { fontSize: 14, fontWeight: '600' },
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   tagText: { fontSize: 13, fontWeight: '500' },
@@ -321,4 +378,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   folderChipText: { fontSize: 13, fontWeight: '600', color: '#FFFFFF' },
+  noFolders: { fontSize: 14, lineHeight: 21 },
 });
