@@ -31,10 +31,6 @@ const SORT_OPTIONS: { label: string; value: SortOption }[] = [
   { label: 'A–Z', value: 'az' },
 ];
 
-function isSortOption(value: string): value is SortOption {
-  return SORT_OPTIONS.some(option => option.value === value);
-}
-
 function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good morning ☀️';
@@ -57,9 +53,7 @@ export default function HomeScreen() {
   const { colors } = useTheme();
 
   const [filter, setFilter] = useState('all');
-  const [sortBy, setSortBy] = useState<SortOption>(
-    isSortOption(settings.defaultSort) ? settings.defaultSort : 'newest'
-  );
+  const [sortBy, setSortBy] = useState<SortOption>(settings.defaultSort);
   const [refreshing, setRefreshing] = useState(false);
 
   const activeNotes = notes.filter(n => !n.archived);

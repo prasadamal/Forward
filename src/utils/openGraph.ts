@@ -34,9 +34,15 @@ function extractTitle(html: string): string | undefined {
 function decodeHtmlEntities(text: string): string {
   return text
     // Decimal numeric entities e.g. &#8217;
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
+    .replace(/&#(\d+);/g, (match, dec) => {
+      const code = parseInt(dec, 10);
+      return code >= 0 && code <= 0x10FFFF ? String.fromCodePoint(code) : match;
+    })
     // Hex numeric entities e.g. &#x2019;
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => {
+      const code = parseInt(hex, 16);
+      return code >= 0 && code <= 0x10FFFF ? String.fromCodePoint(code) : match;
+    })
     // Named entities (excluding &amp; – done last to prevent double-decode)
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
