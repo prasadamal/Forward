@@ -24,7 +24,7 @@ export default function SettingsScreen() {
   const handleClearAll = () => {
     Alert.alert(
       'Clear All Data',
-      'This will permanently delete all notes, folders, and saved settings on this device.',
+      'This will permanently delete all notes and folders, and reset saved settings to their defaults on this device.',
       [
         { text: 'Cancel', style: 'cancel' },
         {

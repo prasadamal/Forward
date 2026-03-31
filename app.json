@@ -28,17 +28,28 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "forward" }
+            {
+              "scheme": "forward"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "SEND",
           "data": [
-            { "mimeType": "text/plain" },
-            { "mimeType": "text/html" }
+            {
+              "mimeType": "text/plain"
+            },
+            {
+              "mimeType": "text/html"
+            }
           ],
-          "category": ["DEFAULT"]
+          "category": [
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -46,7 +57,8 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-sharing"
+      "expo-sharing",
+      "expo-font"
     ]
   }
 }

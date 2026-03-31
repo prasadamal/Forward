@@ -77,10 +77,13 @@ export default function ShareReceivedScreen() {
 
   useEffect(() => {
     if (url) {
-      fetchOpenGraph(url).then(meta => {
-        setOgMeta(meta);
-        setLoadingMeta(false);
-      });
+      fetchOpenGraph(url)
+        .then(meta => {
+          setOgMeta(meta);
+        })
+        .finally(() => {
+          setLoadingMeta(false);
+        });
     }
   }, [url]);
 

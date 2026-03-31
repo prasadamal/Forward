@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import java.net.URLEncoder
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
@@ -36,7 +35,7 @@ class MainActivity : ReactActivity() {
   private fun convertShareIntent(intent: Intent, mode: String) {
     if (intent.action == Intent.ACTION_SEND) {
       val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return
-      val encoded = URLEncoder.encode(sharedText, "UTF-8")
+      val encoded = Uri.encode(sharedText)
       intent.action = Intent.ACTION_VIEW
       intent.data = Uri.parse("forward://share?text=$encoded&mode=$mode")
     }

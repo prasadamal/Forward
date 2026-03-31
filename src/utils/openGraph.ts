@@ -89,7 +89,8 @@ export async function fetchOpenGraph(url: string, timeoutMs = 5000): Promise<OGM
       siteName: ogSiteName,
       url: ogUrl || url,
     };
-  } catch {
+  } catch (error) {
+    console.error('[openGraph] Failed to fetch metadata for', url, error);
     return {};
   }
 }

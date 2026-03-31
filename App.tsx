@@ -16,8 +16,8 @@ function navigateToShare(url: string) {
     if (text && navigationRef.isReady()) {
       navigationRef.navigate('ShareReceived', { sharedText: text, mode });
     }
-  } catch {
-    // ignore malformed deep links
+  } catch (error) {
+    console.error('[App] Failed to process deep link', error);
   }
 }
 

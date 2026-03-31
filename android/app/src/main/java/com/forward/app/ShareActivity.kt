@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import java.net.URLEncoder
 
 /**
  * A lightweight trampoline Activity registered in the Android share sheet as
@@ -18,7 +17,7 @@ class ShareActivity : Activity() {
         val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT) ?: ""
 
         if (sharedText.isNotBlank()) {
-            val encoded = URLEncoder.encode(sharedText, "UTF-8")
+            val encoded = Uri.encode(sharedText)
             val deepLink = "forward://share?text=$encoded&mode=auto"
 
             val mainIntent = Intent(this, MainActivity::class.java).apply {
