@@ -17,6 +17,9 @@ export default function FolderCard({ folder, onPress }: Props) {
       style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
       onPress={onPress}
       activeOpacity={0.75}
+      accessibilityRole="button"
+      accessibilityLabel={`${folder.name} folder`}
+      accessibilityHint={`Open ${folder.name} folder with ${folder.noteIds.length} ${folder.noteIds.length === 1 ? 'note' : 'notes'}`}
     >
       <View style={[styles.emojiCircle, { backgroundColor: folder.color + '33' }]}>
         <Text style={styles.emoji}>{folder.emoji}</Text>

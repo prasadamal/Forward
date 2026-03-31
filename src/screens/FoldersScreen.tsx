@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  SafeAreaView, StatusBar, Alert, TextInput, Modal,
+  SafeAreaView, StatusBar, Alert, TextInput, Modal, Keyboard,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -26,8 +26,15 @@ export default function FoldersScreen() {
   const handleCreate = async () => {
     if (!newFolderName.trim()) return;
     await createFolder(newFolderName.trim());
+    Keyboard.dismiss();
     setNewFolderName('');
     setShowCreate(false);
+  };
+
+  const closeCreateModal = () => {
+    Keyboard.dismiss();
+    setShowCreate(false);
+    setNewFolderName('');
   };
 
   const handleDelete = (id: string, name: string) => {
@@ -51,6 +58,8 @@ export default function FoldersScreen() {
         <TouchableOpacity
           style={[styles.createBtn, { backgroundColor: colors.accent }]}
           onPress={() => setShowCreate(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Create a new folder"
         >
           <Text style={styles.createBtnText}>+ New</Text>
         </TouchableOpacity>
@@ -78,6 +87,9 @@ export default function FoldersScreen() {
                 <TouchableOpacity
                   style={styles.deleteBtn}
                   onPress={() => handleDelete(item.id, item.name)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete ${item.name} folder`}
+                  hitSlop={8}
                 >
                   <Text style={styles.deleteBtnText}>✕</Text>
                 </TouchableOpacity>
@@ -88,7 +100,7 @@ export default function FoldersScreen() {
       )}
 
       {/* Create Folder Modal */}
-      <Modal visible={showCreate} transparent animationType="slide">
+      <Modal visible={showCreate} transparent animationType="slide" onRequestClose={closeCreateModal}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modal, { backgroundColor: colors.surface }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>New Folder</Text>
@@ -100,17 +112,24 @@ export default function FoldersScreen() {
               onChangeText={setNewFolderName}
               autoFocus
               onSubmitEditing={handleCreate}
+              returnKeyType="done"
+              accessibilityLabel="Folder name input"
+              accessibilityHint="Enter a folder name and submit to create it"
             />
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={[styles.modalBtn, { backgroundColor: colors.card }]}
-                onPress={() => { setShowCreate(false); setNewFolderName(''); }}
+                onPress={closeCreateModal}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel folder creation"
               >
                 <Text style={[styles.modalBtnText, { color: colors.textSecondary }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalBtn, { backgroundColor: colors.accent }]}
                 onPress={handleCreate}
+                accessibilityRole="button"
+                accessibilityLabel="Create folder"
               >
                 <Text style={[styles.modalBtnText, { color: '#FFFFFF' }]}>Create</Text>
               </TouchableOpacity>
@@ -145,9 +164,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 10,
     right: 10,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: 'rgba(255,100,100,0.7)',
     alignItems: 'center',
     justifyContent: 'center',

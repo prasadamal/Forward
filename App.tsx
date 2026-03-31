@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useColorScheme, Linking, View, ActivityIndicator } from 'react-native';
+import { useColorScheme, Linking, View, ActivityIndicator, Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useNoteStore } from './src/store/noteStore';
@@ -25,6 +25,8 @@ export default function App() {
   const loadData = useNoteStore(state => state.loadData);
   const isLoading = useNoteStore(state => state.isLoading);
   const settings = useNoteStore(state => state.settings);
+  const storageError = useNoteStore(state => state.storageError);
+  const dismissStorageError = useNoteStore(state => state.dismissStorageError);
   const systemScheme = useColorScheme();
 
   useEffect(() => {
@@ -40,6 +42,13 @@ export default function App() {
     });
     return () => sub.remove();
   }, []);
+
+  useEffect(() => {
+    if (!storageError) return;
+    Alert.alert('Storage Issue', storageError, [
+      { text: 'OK', onPress: dismissStorageError },
+    ]);
+  }, [storageError, dismissStorageError]);
 
   const isDark =
     settings.theme === 'dark' ||

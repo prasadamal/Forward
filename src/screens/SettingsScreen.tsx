@@ -6,7 +6,6 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import { useNoteStore } from '../store/noteStore';
 import { useTheme } from '../hooks/useTheme';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform as PlatformType } from '../types';
 
 const PLATFORM_STATS: { key: PlatformType; label: string; color: string }[] = [
@@ -19,20 +18,20 @@ const PLATFORM_STATS: { key: PlatformType; label: string; color: string }[] = [
 ];
 
 export default function SettingsScreen() {
-  const { notes, folders, settings, updateSettings } = useNoteStore();
+  const { notes, folders, settings, updateSettings, clearAllData } = useNoteStore();
   const { colors } = useTheme();
 
   const handleClearAll = () => {
     Alert.alert(
       'Clear All Data',
-      'This will permanently delete all notes and folders.',
+      'This will permanently delete all notes, folders, and saved settings on this device.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Clear All', style: 'destructive',
           onPress: async () => {
-            await AsyncStorage.clear();
-            Alert.alert('Done', 'All data cleared. Restart the app.');
+            await clearAllData();
+            Alert.alert('Done', 'All Forward data has been cleared from this device.');
           },
         },
       ]
@@ -50,9 +49,16 @@ export default function SettingsScreen() {
   }, {});
 
   const handleExportNotes = async () => {
-    const json = JSON.stringify(notes, null, 2);
-    await Clipboard.setStringAsync(json);
-    Alert.alert('Exported', 'All notes copied to clipboard as JSON');
+    try {
+      const json = JSON.stringify(notes, null, 2);
+      await Clipboard.setStringAsync(json);
+      Alert.alert(
+        'Exported',
+        `${notes.length} ${notes.length === 1 ? 'note was' : 'notes were'} copied to the clipboard as JSON.`
+      );
+    } catch {
+      Alert.alert('Export Failed', 'Forward could not copy your notes to the clipboard.');
+    }
   };
 
   const ThemeButton = ({ value, label, icon }: { value: string; label: string; icon: string }) => (
@@ -65,6 +71,8 @@ export default function SettingsScreen() {
         },
       ]}
       onPress={() => updateSettings({ theme: value as 'light' | 'dark' | 'system' })}
+      accessibilityRole="button"
+      accessibilityLabel={`Use ${label} theme`}
     >
       <Text style={styles.themeBtnIcon}>{icon}</Text>
       <Text style={[styles.themeBtnLabel, { color: settings.theme === value ? '#FFFFFF' : colors.textSecondary }]}>
@@ -83,6 +91,8 @@ export default function SettingsScreen() {
         },
       ]}
       onPress={() => updateSettings({ defaultSort: value as 'newest' | 'oldest' | 'az' })}
+      accessibilityRole="button"
+      accessibilityLabel={`Sort notes by ${label}`}
     >
       <Text style={[styles.sortBtnLabel, { color: settings.defaultSort === value ? '#FFFFFF' : colors.textSecondary }]}>
         {label}
@@ -215,6 +225,8 @@ export default function SettingsScreen() {
           <TouchableOpacity
             style={[styles.exportBtn, { borderColor: colors.accent + '44' }]}
             onPress={handleExportNotes}
+            accessibilityRole="button"
+            accessibilityLabel="Export notes as JSON"
           >
             <Text style={[styles.exportBtnText, { color: colors.accent }]}>📋 Export Notes as JSON</Text>
           </TouchableOpacity>
@@ -226,6 +238,8 @@ export default function SettingsScreen() {
           <TouchableOpacity
             style={[styles.dangerBtn, { borderColor: colors.error + '44' }]}
             onPress={handleClearAll}
+            accessibilityRole="button"
+            accessibilityLabel="Clear all app data"
           >
             <Text style={[styles.dangerBtnText, { color: colors.error }]}>🗑 Clear All Data</Text>
           </TouchableOpacity>
@@ -327,4 +341,3 @@ const styles = StyleSheet.create({
   },
   platformCount: { fontSize: 13, fontWeight: '700', width: 24, textAlign: 'right' },
 });
-

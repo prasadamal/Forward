@@ -9,6 +9,7 @@ import { useNoteStore } from '../store/noteStore';
 import { useTheme } from '../hooks/useTheme';
 import { NOTE_ACCENT_COLORS } from '../constants/colors';
 import { RootStackParamList } from '../types';
+import { extractTitle, extractUrl, detectPlatform } from '../utils/smartOrganizer';
 
 type RouteType = RouteProp<RootStackParamList, 'EditNote'>;
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
@@ -28,7 +29,20 @@ export default function EditNoteScreen() {
   if (!note) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <Text style={{ color: colors.text, padding: 20 }}>Note not found.</Text>
+        <View style={styles.missingState}>
+          <Text style={[styles.missingTitle, { color: colors.text }]}>Note not found</Text>
+          <Text style={[styles.missingText, { color: colors.textSecondary }]}>
+            This note is no longer available to edit.
+          </Text>
+          <TouchableOpacity
+            style={[styles.returnBtn, { backgroundColor: colors.accent }]}
+            onPress={() => navigation.navigate('MainTabs')}
+            accessibilityRole="button"
+            accessibilityLabel="Go back to home"
+          >
+            <Text style={styles.returnBtnText}>Go Home</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
@@ -39,9 +53,12 @@ export default function EditNoteScreen() {
       return;
     }
     setSaving(true);
+    const trimmedContent = content.trim();
+    const url = extractUrl(trimmedContent);
+    const fallbackTitle = extractTitle(trimmedContent, url ? detectPlatform(url) : note.platform);
     await editNote(note.id, {
-      title: title.trim() || content.trim().slice(0, 60),
-      content: content.trim(),
+      title: title.trim() || fallbackTitle,
+      content: trimmedContent,
       color: selectedColor,
     });
     setSaving(false);
@@ -59,7 +76,7 @@ export default function EditNoteScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Cancel editing">
             <Text style={[styles.cancel, { color: colors.textSecondary }]}>Cancel</Text>
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Edit Note</Text>
@@ -67,6 +84,8 @@ export default function EditNoteScreen() {
             style={[styles.saveBtn, { backgroundColor: saving ? colors.textMuted : colors.accent }]}
             onPress={handleSave}
             disabled={saving}
+            accessibilityRole="button"
+            accessibilityLabel="Save note changes"
           >
             <Text style={styles.saveBtnText}>{saving ? '...' : 'Save'}</Text>
           </TouchableOpacity>
@@ -82,7 +101,11 @@ export default function EditNoteScreen() {
             placeholder="Note title..."
             placeholderTextColor={colors.textMuted}
             returnKeyType="next"
+            accessibilityLabel="Edit note title"
           />
+          <Text style={[styles.helperText, { color: colors.textMuted }]}>
+            Optional. Forward will create a title from the content if you leave this blank.
+          </Text>
 
           {/* Content field */}
           <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Content</Text>
@@ -95,6 +118,7 @@ export default function EditNoteScreen() {
             textAlignVertical="top"
             placeholder="Note content..."
             placeholderTextColor={colors.textMuted}
+            accessibilityLabel="Edit note content"
           />
 
           {/* Color Picker */}
@@ -108,6 +132,8 @@ export default function EditNoteScreen() {
                 !selectedColor && styles.colorSwatchSelected,
               ]}
               onPress={() => setSelectedColor(undefined)}
+              accessibilityRole="button"
+              accessibilityLabel="Use automatic accent color"
             >
               <Text style={{ color: colors.textMuted, fontSize: 10 }}>Auto</Text>
             </TouchableOpacity>
@@ -120,6 +146,8 @@ export default function EditNoteScreen() {
                   selectedColor === c && styles.colorSwatchSelected,
                 ]}
                 onPress={() => setSelectedColor(c)}
+                accessibilityRole="button"
+                accessibilityLabel={`Use ${c} accent color`}
               />
             ))}
           </View>
@@ -132,6 +160,16 @@ export default function EditNoteScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   flex: { flex: 1 },
+  missingState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  missingTitle: { fontSize: 22, fontWeight: '800', marginBottom: 8 },
+  missingText: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
+  returnBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20 },
+  returnBtnText: { color: '#FFFFFF', fontWeight: '700' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -151,8 +189,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    marginBottom: 20,
+    marginBottom: 8,
   },
+  helperText: { fontSize: 12, lineHeight: 18, marginBottom: 20 },
   input: { fontSize: 17, lineHeight: 26, minHeight: 160, textAlignVertical: 'top', marginBottom: 20 },
   colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
   colorSwatch: {
@@ -166,4 +205,3 @@ const styles = StyleSheet.create({
   colorSwatchNone: { backgroundColor: 'transparent' },
   colorSwatchSelected: { transform: [{ scale: 1.15 }] },
 });
-
