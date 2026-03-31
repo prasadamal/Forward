@@ -1,17 +1,16 @@
 import React from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { Colors } from '../constants/colors';
+import { useTheme } from '../hooks/useTheme';
 
 interface Props {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
   onClear?: () => void;
-  theme?: 'dark' | 'light';
 }
 
-export default function SearchBar({ value, onChangeText, placeholder = 'Search...', onClear, theme = 'dark' }: Props) {
-  const colors = Colors[theme];
+export default function SearchBar({ value, onChangeText, placeholder = 'Search...', onClear }: Props) {
+  const { colors } = useTheme();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>

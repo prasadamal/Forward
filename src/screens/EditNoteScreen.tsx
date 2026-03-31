@@ -65,6 +65,19 @@ export default function EditNoteScreen() {
     navigation.goBack();
   };
 
+  const hasChanges = title !== (note?.title || '') || content !== (note?.content || '') || selectedColor !== note?.color;
+
+  const handleCancel = () => {
+    if (hasChanges) {
+      Alert.alert('Discard Changes?', 'You have unsaved changes that will be lost.', [
+        { text: 'Keep Editing', style: 'cancel' },
+        { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() },
+      ]);
+    } else {
+      navigation.goBack();
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar
@@ -76,7 +89,7 @@ export default function EditNoteScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Cancel editing">
+          <TouchableOpacity onPress={handleCancel} accessibilityRole="button" accessibilityLabel="Cancel editing">
             <Text style={[styles.cancel, { color: colors.textSecondary }]}>Cancel</Text>
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Edit Note</Text>

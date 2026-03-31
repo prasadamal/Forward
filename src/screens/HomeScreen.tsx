@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   SafeAreaView, StatusBar, RefreshControl,
@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNoteStore } from '../store/noteStore';
 import { useTheme } from '../hooks/useTheme';
+import { PLATFORM_COLORS } from '../constants/colors';
 import { RootStackParamList } from '../types';
 import NoteCard from '../components/NoteCard';
 import EmptyState from '../components/EmptyState';
@@ -38,15 +39,6 @@ function getGreeting() {
   return 'Good evening 🌙';
 }
 
-const PLATFORM_COLORS: Record<string, string> = {
-  youtube: '#FF0000',
-  instagram: '#C13584',
-  twitter: '#1DA1F2',
-  reddit: '#FF4500',
-  web: '#4CAF50',
-  manual: '#7C6FE0',
-};
-
 export default function HomeScreen() {
   const navigation = useNavigation<NavProp>();
   const { notes, togglePin, settings, loadData } = useNoteStore();
@@ -56,20 +48,22 @@ export default function HomeScreen() {
   const [sortBy, setSortBy] = useState<SortOption>(settings.defaultSort);
   const [refreshing, setRefreshing] = useState(false);
 
-  const activeNotes = notes.filter(n => !n.archived);
-  const filtered = filter === 'all' ? activeNotes : activeNotes.filter(n => n.platform === filter);
-  const sorted = [...filtered].sort((a, b) => {
-    if (a.pinned && !b.pinned) return -1;
-    if (!a.pinned && b.pinned) return 1;
-    switch (sortBy) {
-      case 'oldest':
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      case 'az':
-        return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
-      default:
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    }
-  });
+  const activeNotes = useMemo(() => notes.filter(n => !n.archived), [notes]);
+  const sorted = useMemo(() => {
+    const filtered = filter === 'all' ? activeNotes : activeNotes.filter(n => n.platform === filter);
+    return [...filtered].sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      switch (sortBy) {
+        case 'oldest':
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'az':
+          return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
+  }, [activeNotes, filter, sortBy]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -218,7 +212,7 @@ export default function HomeScreen() {
 
       {/* FAB */}
       <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.accent }]}
+        style={[styles.fab, { backgroundColor: colors.accent, shadowColor: colors.accent }]}
         onPress={() => navigation.navigate('AddNote', {})}
       >
         <Text style={styles.fabIcon}>+</Text>

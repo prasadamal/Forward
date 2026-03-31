@@ -66,3 +66,21 @@ export const NOTE_ACCENT_COLORS = [
   '#9C27B0',
   '#FF6B35',
 ];
+
+export const PLATFORM_COLORS: Record<string, string> = {
+  youtube: '#FF0000',
+  instagram: '#C13584',
+  twitter: '#1DA1F2',
+  reddit: '#FF4500',
+  web: '#4CAF50',
+  manual: '#7C6FE0',
+};
+
+export const PLATFORM_LABELS: Record<string, string> = {
+  youtube: 'YouTube',
+  instagram: 'Instagram',
+  twitter: 'Twitter',
+  reddit: 'Reddit',
+  web: 'Web',
+  manual: 'Note',
+};

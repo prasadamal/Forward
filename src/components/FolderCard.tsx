@@ -6,10 +6,9 @@ import { useTheme } from '../hooks/useTheme';
 interface Props {
   folder: SmartFolder;
   onPress: () => void;
-  theme?: 'dark' | 'light';
 }
 
-export default function FolderCard({ folder, onPress }: Props) {
+function FolderCard({ folder, onPress }: Props) {
   const { colors } = useTheme();
 
   return (
@@ -77,3 +76,5 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
 });
+
+export default React.memo(FolderCard);

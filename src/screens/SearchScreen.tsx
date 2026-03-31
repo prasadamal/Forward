@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, SafeAreaView, StatusBar,
-  TextInput, TouchableOpacity,
+  TextInput, TouchableOpacity, Keyboard,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -61,7 +61,7 @@ export default function SearchScreen() {
           returnKeyType="search"
         />
         {query.length > 0 && (
-          <TouchableOpacity onPress={() => setQuery('')}>
+          <TouchableOpacity onPress={() => { setQuery(''); Keyboard.dismiss(); }}>
             <Text style={[styles.clear, { color: colors.textMuted }]}>✕</Text>
           </TouchableOpacity>
         )}

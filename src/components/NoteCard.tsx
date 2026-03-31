@@ -2,32 +2,14 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Note } from '../types';
 import { useTheme } from '../hooks/useTheme';
+import { PLATFORM_COLORS, PLATFORM_LABELS } from '../constants/colors';
 import { formatRelativeDate } from '../utils/dateUtils';
 
 interface Props {
   note: Note;
   onPress: () => void;
   onLongPress?: () => void;
-  theme?: 'dark' | 'light';
 }
-
-const PLATFORM_COLORS: Record<string, string> = {
-  youtube: '#FF0000',
-  instagram: '#C13584',
-  twitter: '#1DA1F2',
-  reddit: '#FF4500',
-  web: '#4CAF50',
-  manual: '#7C6FE0',
-};
-
-const PLATFORM_LABELS: Record<string, string> = {
-  youtube: 'YouTube',
-  instagram: 'Instagram',
-  twitter: 'Twitter',
-  reddit: 'Reddit',
-  web: 'Web',
-  manual: 'Note',
-};
 
 const MAX_FALLBACK_TITLE_LENGTH = 40;
 
@@ -41,7 +23,7 @@ function getDomain(url: string): string {
   }
 }
 
-export default function NoteCard({ note, onPress, onLongPress }: Props) {
+function NoteCard({ note, onPress, onLongPress }: Props) {
   const { colors } = useTheme();
   const platformColor = note.color || PLATFORM_COLORS[note.platform || 'manual'];
   const platformLabel = PLATFORM_LABELS[note.platform || 'manual'];
@@ -174,3 +156,5 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+
+export default React.memo(NoteCard);
