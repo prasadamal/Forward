@@ -79,7 +79,7 @@ export const PLATFORM_COLORS: Record<string, string> = {
 export const PLATFORM_LABELS: Record<string, string> = {
   youtube: 'YouTube',
   instagram: 'Instagram',
-  twitter: 'Twitter',
+  twitter: 'Twitter / X',
   reddit: 'Reddit',
   web: 'Web',
   manual: 'Note',
