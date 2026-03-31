@@ -7,7 +7,7 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Clipboard from 'expo-clipboard';
 import { useNoteStore } from '../store/noteStore';
-import { Colors } from '../constants/colors';
+import { useTheme } from '../hooks/useTheme';
 import { RootStackParamList } from '../types';
 import { formatFullDate } from '../utils/dateUtils';
 
@@ -27,7 +27,7 @@ export default function NoteDetailScreen() {
   const route = useRoute<RouteType>();
   const navigation = useNavigation<NavProp>();
   const { getNoteById, deleteNote, archiveNote, restoreNote, togglePin, getFolderById } = useNoteStore();
-  const colors = Colors.dark;
+  const { colors } = useTheme();
 
   const note = getNoteById(route.params.noteId);
 
@@ -39,7 +39,7 @@ export default function NoteDetailScreen() {
     );
   }
 
-  const platformColor = PLATFORM_COLORS[note.platform || 'manual'];
+  const platformColor = note.color || PLATFORM_COLORS[note.platform || 'manual'];
 
   const handleArchive = () => {
     Alert.alert('Archive Note', 'This note will be moved to the Archived folder.', [
@@ -92,7 +92,10 @@ export default function NoteDetailScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar
+        barStyle={colors.text === '#FFFFFF' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+      />
 
       {/* Top actions */}
       <View style={[styles.toolbar, { borderBottomColor: colors.border }]}>

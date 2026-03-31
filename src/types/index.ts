@@ -47,4 +47,5 @@ export type RootStackParamList = {
   FolderDetail: { folderId: string };
   AddNote: { initialContent?: string; initialUrl?: string };
   EditNote: { noteId: string };
+  ShareReceived: { sharedText: string; mode: 'auto' | 'picker' };
 };

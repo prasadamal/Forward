@@ -6,7 +6,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNoteStore } from '../store/noteStore';
-import { Colors } from '../constants/colors';
+import { useTheme } from '../hooks/useTheme';
 import { RootStackParamList } from '../types';
 import FolderCard from '../components/FolderCard';
 import EmptyState from '../components/EmptyState';
@@ -16,9 +16,9 @@ type NavProp = NativeStackNavigationProp<RootStackParamList>;
 export default function FoldersScreen() {
   const navigation = useNavigation<NavProp>();
   const { folders, createFolder, deleteFolder } = useNoteStore();
+  const { colors } = useTheme();
   const [showCreate, setShowCreate] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
-  const colors = Colors.dark;
 
   const userFolders = folders.filter(f => !f.isSystem);
   const systemFolders = folders.filter(f => f.isSystem);
@@ -41,7 +41,10 @@ export default function FoldersScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar
+        barStyle={colors.text === '#FFFFFF' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+      />
 
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Smart Folders</Text>
@@ -58,7 +61,6 @@ export default function FoldersScreen() {
           icon="📁"
           title="No folders yet"
           description="Add notes and Forward will auto-create smart folders for locations and topics."
-          theme="dark"
         />
       ) : (
         <FlatList
@@ -71,7 +73,6 @@ export default function FoldersScreen() {
               <FolderCard
                 folder={item}
                 onPress={() => navigation.navigate('FolderDetail', { folderId: item.id })}
-                theme="dark"
               />
               {!item.isSystem && (
                 <TouchableOpacity

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, TextInput, ScrollView, StyleSheet, SafeAreaView,
   StatusBar, TouchableOpacity, Alert, KeyboardAvoidingView, Platform,
@@ -6,7 +6,8 @@ import {
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNoteStore } from '../store/noteStore';
-import { Colors } from '../constants/colors';
+import { useTheme } from '../hooks/useTheme';
+import { NOTE_ACCENT_COLORS } from '../constants/colors';
 import { RootStackParamList } from '../types';
 
 type RouteType = RouteProp<RootStackParamList, 'EditNote'>;
@@ -16,10 +17,12 @@ export default function EditNoteScreen() {
   const route = useRoute<RouteType>();
   const navigation = useNavigation<NavProp>();
   const { getNoteById, editNote } = useNoteStore();
-  const colors = Colors.dark;
+  const { colors } = useTheme();
 
   const note = getNoteById(route.params.noteId);
+  const [title, setTitle] = useState(note?.title || '');
   const [content, setContent] = useState(note?.content || '');
+  const [selectedColor, setSelectedColor] = useState<string | undefined>(note?.color);
   const [saving, setSaving] = useState(false);
 
   if (!note) {
@@ -36,14 +39,21 @@ export default function EditNoteScreen() {
       return;
     }
     setSaving(true);
-    await editNote(note.id, { content: content.trim() });
+    await editNote(note.id, {
+      title: title.trim() || content.trim().slice(0, 60),
+      content: content.trim(),
+      color: selectedColor,
+    });
     setSaving(false);
     navigation.goBack();
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar
+        barStyle={colors.text === '#FFFFFF' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+      />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -63,15 +73,56 @@ export default function EditNoteScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {/* Title field */}
+          <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Title</Text>
+          <TextInput
+            style={[styles.titleInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]}
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Note title..."
+            placeholderTextColor={colors.textMuted}
+            returnKeyType="next"
+          />
+
+          {/* Content field */}
+          <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Content</Text>
           <TextInput
             style={[styles.input, { color: colors.text }]}
             value={content}
             onChangeText={setContent}
             multiline
-            autoFocus
             scrollEnabled={false}
             textAlignVertical="top"
+            placeholder="Note content..."
+            placeholderTextColor={colors.textMuted}
           />
+
+          {/* Color Picker */}
+          <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Accent colour</Text>
+          <View style={styles.colorRow}>
+            <TouchableOpacity
+              style={[
+                styles.colorSwatch,
+                styles.colorSwatchNone,
+                { borderColor: !selectedColor ? colors.accent : colors.border },
+                !selectedColor && styles.colorSwatchSelected,
+              ]}
+              onPress={() => setSelectedColor(undefined)}
+            >
+              <Text style={{ color: colors.textMuted, fontSize: 10 }}>Auto</Text>
+            </TouchableOpacity>
+            {NOTE_ACCENT_COLORS.map(c => (
+              <TouchableOpacity
+                key={c}
+                style={[
+                  styles.colorSwatch,
+                  { backgroundColor: c, borderColor: selectedColor === c ? '#FFFFFF' : 'transparent' },
+                  selectedColor === c && styles.colorSwatchSelected,
+                ]}
+                onPress={() => setSelectedColor(c)}
+              />
+            ))}
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -93,6 +144,26 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 17, fontWeight: '700' },
   saveBtn: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20 },
   saveBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
-  content: { padding: 20, paddingBottom: 40 },
-  input: { fontSize: 17, lineHeight: 26, minHeight: 200, textAlignVertical: 'top' },
+  content: { padding: 20, paddingBottom: 60 },
+  fieldLabel: { fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 8, marginTop: 4 },
+  titleInput: {
+    fontSize: 16,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  input: { fontSize: 17, lineHeight: 26, minHeight: 160, textAlignVertical: 'top', marginBottom: 20 },
+  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
+  colorSwatch: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  colorSwatchNone: { backgroundColor: 'transparent' },
+  colorSwatchSelected: { transform: [{ scale: 1.15 }] },
 });
+

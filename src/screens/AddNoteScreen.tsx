@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, TextInput, ScrollView, StyleSheet, SafeAreaView,
   StatusBar, TouchableOpacity, Alert, KeyboardAvoidingView, Platform,
@@ -6,7 +6,8 @@ import {
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNoteStore } from '../store/noteStore';
-import { Colors } from '../constants/colors';
+import { useTheme } from '../hooks/useTheme';
+import { NOTE_ACCENT_COLORS } from '../constants/colors';
 import { RootStackParamList } from '../types';
 import { extractTags, extractUrl, detectPlatform } from '../utils/smartOrganizer';
 
@@ -26,10 +27,11 @@ export default function AddNoteScreen() {
   const route = useRoute<RouteType>();
   const navigation = useNavigation<NavProp>();
   const { addNote, findNoteByUrl } = useNoteStore();
-  const colors = Colors.dark;
+  const { colors } = useTheme();
 
   const [content, setContent] = useState(route.params?.initialContent || route.params?.initialUrl || '');
   const [saving, setSaving] = useState(false);
+  const [selectedColor, setSelectedColor] = useState<string | undefined>(undefined);
 
   const url = extractUrl(content);
   const platform = url ? detectPlatform(url) : 'manual';
@@ -46,14 +48,17 @@ export default function AddNoteScreen() {
       return;
     }
     setSaving(true);
-    const note = await addNote(content.trim());
+    const note = await addNote(content.trim(), selectedColor);
     setSaving(false);
     navigation.replace('NoteDetail', { noteId: note.id });
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar
+        barStyle={colors.text === '#FFFFFF' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+      />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -85,6 +90,35 @@ export default function AddNoteScreen() {
             autoFocus
             scrollEnabled={false}
           />
+
+          {/* Color Picker */}
+          <View style={styles.colorSection}>
+            <Text style={[styles.colorLabel, { color: colors.textMuted }]}>Accent colour</Text>
+            <View style={styles.colorRow}>
+              <TouchableOpacity
+                style={[
+                  styles.colorSwatch,
+                  styles.colorSwatchNone,
+                  { borderColor: !selectedColor ? colors.accent : colors.border },
+                  !selectedColor && styles.colorSwatchSelected,
+                ]}
+                onPress={() => setSelectedColor(undefined)}
+              >
+                <Text style={{ color: colors.textMuted, fontSize: 10 }}>Auto</Text>
+              </TouchableOpacity>
+              {NOTE_ACCENT_COLORS.map(c => (
+                <TouchableOpacity
+                  key={c}
+                  style={[
+                    styles.colorSwatch,
+                    { backgroundColor: c, borderColor: selectedColor === c ? '#FFFFFF' : 'transparent' },
+                    selectedColor === c && styles.colorSwatchSelected,
+                  ]}
+                  onPress={() => setSelectedColor(c)}
+                />
+              ))}
+            </View>
+          </View>
 
           {/* Smart Preview */}
           {content.trim().length > 2 && (
@@ -170,15 +204,29 @@ const styles = StyleSheet.create({
   input: {
     fontSize: 17,
     lineHeight: 26,
-    minHeight: 140,
+    minHeight: 120,
     textAlignVertical: 'top',
-    marginBottom: 20,
+    marginBottom: 16,
   },
+  colorSection: { marginBottom: 20 },
+  colorLabel: { fontSize: 12, fontWeight: '600', marginBottom: 10, letterSpacing: 0.5 },
+  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  colorSwatch: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  colorSwatchNone: { backgroundColor: 'transparent' },
+  colorSwatchSelected: { transform: [{ scale: 1.15 }] },
   preview: {
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
     gap: 12,
+    marginBottom: 12,
   },
   previewTitle: { fontSize: 13, fontWeight: '700', marginBottom: 4 },
   previewRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
@@ -191,3 +239,4 @@ const styles = StyleSheet.create({
   duplicateWarning: { fontSize: 13, fontWeight: '600', marginTop: 12 },
   wordCount: { fontSize: 12, textAlign: 'right', marginTop: 8 },
 });
+
