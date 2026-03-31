@@ -46,7 +46,7 @@ interface NoteStore {
 
   // Actions
   loadData: () => Promise<void>;
-  addNote: (content: string) => Promise<Note>;
+  addNote: (content: string, color?: string) => Promise<Note>;
   editNote: (id: string, updates: Partial<Note>) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
   togglePin: (id: string) => Promise<void>;
@@ -72,7 +72,7 @@ function generateId(): string {
 export const useNoteStore = create<NoteStore>((set, get) => ({
   notes: [],
   folders: SYSTEM_FOLDERS,
-  settings: { theme: 'dark', defaultView: 'notes' },
+  settings: { theme: 'dark', defaultView: 'notes', defaultSort: 'newest', recentSearches: [] },
   isLoading: true,
 
   loadData: async () => {
@@ -80,10 +80,16 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       if (raw) {
         const { notes, folders, settings } = JSON.parse(raw);
+        const s = settings || {};
         set({
           notes: notes || [],
           folders: folders || SYSTEM_FOLDERS,
-          settings: settings || { theme: 'dark', defaultView: 'notes' },
+          settings: {
+            theme: s.theme || 'dark',
+            defaultView: s.defaultView || 'notes',
+            defaultSort: s.defaultSort || 'newest',
+            recentSearches: s.recentSearches || [],
+          },
           isLoading: false,
         });
       } else {
@@ -94,7 +100,7 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     }
   },
 
-  addNote: async (content: string) => {
+  addNote: async (content: string, color?: string) => {
     const url = extractUrl(content);
     const platform = url ? detectPlatform(url) : 'manual';
     const { tags, folders: detectedFolderNames } = extractTags(content);
@@ -112,6 +118,7 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
       createdAt: now,
       updatedAt: now,
       pinned: false,
+      color,
       archived: false,
     };
 

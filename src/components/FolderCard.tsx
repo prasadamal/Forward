@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SmartFolder } from '../types';
-import { Colors } from '../constants/colors';
+import { useTheme } from '../hooks/useTheme';
 
 interface Props {
   folder: SmartFolder;
@@ -9,8 +9,8 @@ interface Props {
   theme?: 'dark' | 'light';
 }
 
-export default function FolderCard({ folder, onPress, theme = 'dark' }: Props) {
-  const colors = Colors[theme];
+export default function FolderCard({ folder, onPress }: Props) {
+  const { colors } = useTheme();
 
   return (
     <TouchableOpacity
@@ -31,6 +31,50 @@ export default function FolderCard({ folder, onPress, theme = 'dark' }: Props) {
     </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    borderRadius: 16,
+    padding: 16,
+    flex: 1,
+    margin: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+    minHeight: 130,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  emojiCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  emoji: {
+    fontSize: 26,
+  },
+  name: {
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  count: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  colorBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    borderRadius: 3,
+  },
+});
+
 
 const styles = StyleSheet.create({
   card: {

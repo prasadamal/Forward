@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Note } from '../types';
-import { Colors } from '../constants/colors';
+import { useTheme } from '../hooks/useTheme';
 import { formatRelativeDate } from '../utils/dateUtils';
 
 interface Props {
@@ -21,59 +21,64 @@ const PLATFORM_COLORS: Record<string, string> = {
 };
 
 const PLATFORM_LABELS: Record<string, string> = {
-  youtube: '▶ YouTube',
-  instagram: '◆ Instagram',
-  twitter: '✦ Twitter',
-  reddit: '● Reddit',
-  web: '⊕ Web',
-  manual: '✎ Note',
+  youtube: 'YouTube',
+  instagram: 'Instagram',
+  twitter: 'Twitter',
+  reddit: 'Reddit',
+  web: 'Web',
+  manual: 'Note',
 };
 
-export default function NoteCard({ note, onPress, onLongPress, theme = 'dark' }: Props) {
-  const colors = Colors[theme];
-  const platformColor = PLATFORM_COLORS[note.platform || 'manual'];
+export default function NoteCard({ note, onPress, onLongPress }: Props) {
+  const { colors } = useTheme();
+  const platformColor = note.color || PLATFORM_COLORS[note.platform || 'manual'];
   const platformLabel = PLATFORM_LABELS[note.platform || 'manual'];
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: note.color || colors.card, borderColor: colors.border }]}
+      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
       onPress={onPress}
       onLongPress={onLongPress}
       activeOpacity={0.75}
     >
-      <View style={styles.header}>
-        <View style={[styles.platformBadge, { backgroundColor: platformColor + '22' }]}>
-          <Text style={[styles.platformText, { color: platformColor }]}>{platformLabel}</Text>
+      {/* Colored left stripe */}
+      <View style={[styles.stripe, { backgroundColor: platformColor }]} />
+
+      <View style={styles.inner}>
+        <View style={styles.header}>
+          <View style={[styles.platformBadge, { backgroundColor: platformColor + '22' }]}>
+            <Text style={[styles.platformText, { color: platformColor }]}>{platformLabel}</Text>
+          </View>
+          {note.pinned && <Text style={styles.pinIcon}>📌</Text>}
+          <Text style={[styles.date, { color: colors.textMuted }]}>
+            {formatRelativeDate(note.createdAt)}
+          </Text>
         </View>
-        {note.pinned && <Text style={styles.pinIcon}>📌</Text>}
-        <Text style={[styles.date, { color: colors.textMuted }]}>
-          {formatRelativeDate(note.createdAt)}
+
+        <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
+          {note.title}
         </Text>
+
+        {note.url ? (
+          <Text style={[styles.url, { color: colors.accent }]} numberOfLines={1}>
+            {note.url}
+          </Text>
+        ) : (
+          <Text style={[styles.content, { color: colors.textSecondary }]} numberOfLines={2}>
+            {note.content}
+          </Text>
+        )}
+
+        {note.tags.length > 0 && (
+          <View style={styles.tagsRow}>
+            {note.tags.slice(0, 4).map(tag => (
+              <View key={tag} style={[styles.tag, { backgroundColor: colors.accent + '22' }]}>
+                <Text style={[styles.tagText, { color: colors.accent }]}>#{tag}</Text>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
-
-      <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
-        {note.title}
-      </Text>
-
-      {note.url ? (
-        <Text style={[styles.url, { color: colors.accent }]} numberOfLines={1}>
-          {note.url}
-        </Text>
-      ) : (
-        <Text style={[styles.content, { color: colors.textSecondary }]} numberOfLines={2}>
-          {note.content}
-        </Text>
-      )}
-
-      {note.tags.length > 0 && (
-        <View style={styles.tagsRow}>
-          {note.tags.slice(0, 4).map(tag => (
-            <View key={tag} style={[styles.tag, { backgroundColor: colors.accent + '22' }]}>
-              <Text style={[styles.tagText, { color: colors.accent }]}>#{tag}</Text>
-            </View>
-          ))}
-        </View>
-      )}
     </TouchableOpacity>
   );
 }
@@ -81,10 +86,18 @@ export default function NoteCard({ note, onPress, onLongPress, theme = 'dark' }:
 const styles = StyleSheet.create({
   card: {
     borderRadius: 16,
-    padding: 16,
     marginHorizontal: 16,
     marginBottom: 12,
     borderWidth: 1,
+    overflow: 'hidden',
+    flexDirection: 'row',
+  },
+  stripe: {
+    width: 4,
+  },
+  inner: {
+    flex: 1,
+    padding: 14,
   },
   header: {
     flexDirection: 'row',

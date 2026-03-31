@@ -30,6 +30,8 @@ export interface SmartFolder {
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
   defaultView: 'notes' | 'folders';
+  defaultSort: 'newest' | 'oldest' | 'az';
+  recentSearches: string[];
 }
 
 export type RootTabParamList = {
