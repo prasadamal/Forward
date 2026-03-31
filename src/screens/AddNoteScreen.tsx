@@ -93,7 +93,7 @@ export default function AddNoteScreen() {
 
           {/* Color Picker */}
           <View style={styles.colorSection}>
-            <Text style={[styles.colorLabel, { color: colors.textMuted }]}>Accent colour</Text>
+            <Text style={[styles.colorLabel, { color: colors.textMuted }]}>Accent color</Text>
             <View style={styles.colorRow}>
               <TouchableOpacity
                 style={[

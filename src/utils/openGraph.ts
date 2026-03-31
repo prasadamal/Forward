@@ -33,12 +33,26 @@ function extractTitle(html: string): string | undefined {
 
 function decodeHtmlEntities(text: string): string {
   return text
-    .replace(/&amp;/g, '&')
+    // Decimal numeric entities e.g. &#8217;
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
+    // Hex numeric entities e.g. &#x2019;
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    // Named entities (excluding &amp; – done last to prevent double-decode)
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ');
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&mdash;/g, '—')
+    .replace(/&ndash;/g, '–')
+    .replace(/&hellip;/g, '…')
+    .replace(/&rsquo;/g, '\u2019')
+    .replace(/&lsquo;/g, '\u2018')
+    .replace(/&rdquo;/g, '\u201D')
+    .replace(/&ldquo;/g, '\u201C')
+    // &amp; must be last so &amp;lt; → &lt; (not <)
+    .replace(/&amp;/g, '&');
 }
 
 export async function fetchOpenGraph(url: string, timeoutMs = 5000): Promise<OGMetadata> {

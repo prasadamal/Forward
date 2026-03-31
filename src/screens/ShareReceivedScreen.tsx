@@ -54,23 +54,6 @@ export default function ShareReceivedScreen() {
   const platformColor = PLATFORM_COLORS[platform];
   const duplicate = url ? findNoteByUrl(url) : undefined;
 
-  useEffect(() => {
-    if (url) {
-      setLoadingMeta(true);
-      fetchOpenGraph(url).then(meta => {
-        setOgMeta(meta);
-        setLoadingMeta(false);
-      });
-    }
-  }, [url]);
-
-  // Auto-save when mode is 'auto' and we're done loading metadata
-  useEffect(() => {
-    if (mode === 'auto' && !loadingMeta && !saving && !saved) {
-      handleAutoAdd();
-    }
-  }, [mode, loadingMeta]);
-
   const handleAutoAdd = useCallback(async () => {
     if (duplicate) {
       setSaved(true);
@@ -86,6 +69,23 @@ export default function ShareReceivedScreen() {
     setSaved(true);
     setSavedNoteId(note.id);
   }, [duplicate, ogMeta, sharedText, addNote]);
+
+  useEffect(() => {
+    if (url) {
+      setLoadingMeta(true);
+      fetchOpenGraph(url).then(meta => {
+        setOgMeta(meta);
+        setLoadingMeta(false);
+      });
+    }
+  }, [url]);
+
+  // Auto-save when mode is 'auto' and we're done loading metadata
+  useEffect(() => {
+    if (mode === 'auto' && !loadingMeta && !saving && !saved) {
+      handleAutoAdd();
+    }
+  }, [mode, loadingMeta, saving, saved, handleAutoAdd]);
 
   const handlePickerConfirm = async () => {
     setShowPicker(false);

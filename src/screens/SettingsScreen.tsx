@@ -216,7 +216,7 @@ export default function SettingsScreen() {
             style={[styles.exportBtn, { borderColor: colors.accent + '44' }]}
             onPress={handleExportNotes}
           >
-            <Text style={[styles.exportBtnText, { color: colors.accent }]}>📋  Export Notes as JSON</Text>
+            <Text style={[styles.exportBtnText, { color: colors.accent }]}>📋 Export Notes as JSON</Text>
           </TouchableOpacity>
         </View>
 
@@ -227,7 +227,7 @@ export default function SettingsScreen() {
             style={[styles.dangerBtn, { borderColor: colors.error + '44' }]}
             onPress={handleClearAll}
           >
-            <Text style={[styles.dangerBtnText, { color: colors.error }]}>🗑  Clear All Data</Text>
+            <Text style={[styles.dangerBtnText, { color: colors.error }]}>🗑 Clear All Data</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
