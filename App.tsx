@@ -11,7 +11,14 @@ function navigateToShare(url: string) {
   try {
     const withoutScheme = url.replace('forward://share', '');
     const params = new URLSearchParams(withoutScheme.replace(/^\?/, ''));
-    const text = decodeURIComponent(params.get('text') || '');
+    const rawText = params.get('text') || '';
+    let text = '';
+    try {
+      text = decodeURIComponent(rawText);
+    } catch (error) {
+      console.error('[App] Failed to decode shared text from deep link', error);
+      text = rawText;
+    }
     const mode = (params.get('mode') === 'auto' ? 'auto' : 'picker') as 'auto' | 'picker';
     if (text && navigationRef.isReady()) {
       navigationRef.navigate('ShareReceived', { sharedText: text, mode });

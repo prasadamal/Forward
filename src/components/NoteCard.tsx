@@ -29,13 +29,13 @@ const PLATFORM_LABELS: Record<string, string> = {
   manual: 'Note',
 };
 
-/** Extract the hostname from a URL, stripping leading "www.". Falls back to a 40-char slice. */
+/** Extract the hostname from a URL, stripping leading "www.". Falls back to a shortened URL. */
 function getDomain(url: string): string {
   try {
     const hostname = new URL(url).hostname;
     return hostname.replace(/^www\./, '');
   } catch {
-    return url.slice(0, 40);
+    return `${url.slice(0, 40)}${url.length > 40 ? '…' : ''}`;
   }
 }
 
@@ -43,6 +43,8 @@ export default function NoteCard({ note, onPress, onLongPress }: Props) {
   const { colors } = useTheme();
   const platformColor = note.color || PLATFORM_COLORS[note.platform || 'manual'];
   const platformLabel = PLATFORM_LABELS[note.platform || 'manual'];
+  const displayTitle = note.title.trim() || note.content.trim().slice(0, 40) || 'Untitled Note';
+  const displayContent = note.content.trim() || 'No preview available';
 
   return (
     <TouchableOpacity
@@ -66,7 +68,7 @@ export default function NoteCard({ note, onPress, onLongPress }: Props) {
         </View>
 
         <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
-          {note.title}
+          {displayTitle}
         </Text>
 
         {note.url ? (
@@ -80,7 +82,7 @@ export default function NoteCard({ note, onPress, onLongPress }: Props) {
           </Text>
         ) : (
           <Text style={[styles.content, { color: colors.textSecondary }]} numberOfLines={2}>
-            {note.content}
+            {displayContent}
           </Text>
         )}
 

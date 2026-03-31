@@ -31,6 +31,10 @@ const SORT_OPTIONS: { label: string; value: SortOption }[] = [
   { label: 'A–Z', value: 'az' },
 ];
 
+function isSortOption(value: string): value is SortOption {
+  return SORT_OPTIONS.some(option => option.value === value);
+}
+
 function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good morning ☀️';
@@ -54,7 +58,7 @@ export default function HomeScreen() {
 
   const [filter, setFilter] = useState('all');
   const [sortBy, setSortBy] = useState<SortOption>(
-    (settings.defaultSort as SortOption) || 'newest'
+    isSortOption(settings.defaultSort) ? settings.defaultSort : 'newest'
   );
   const [refreshing, setRefreshing] = useState(false);
 
@@ -309,4 +313,3 @@ const styles = StyleSheet.create({
   },
   fabIcon: { color: '#FFFFFF', fontSize: 28, fontWeight: '300', marginTop: -2 },
 });
-
