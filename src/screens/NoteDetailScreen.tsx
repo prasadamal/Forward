@@ -7,7 +7,7 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Clipboard from 'expo-clipboard';
 import { useNoteStore } from '../store/noteStore';
-import { Colors } from '../constants/colors';
+import { useTheme } from '../hooks/useTheme';
 import { RootStackParamList } from '../types';
 import { formatFullDate } from '../utils/dateUtils';
 
@@ -27,19 +27,32 @@ export default function NoteDetailScreen() {
   const route = useRoute<RouteType>();
   const navigation = useNavigation<NavProp>();
   const { getNoteById, deleteNote, archiveNote, restoreNote, togglePin, getFolderById } = useNoteStore();
-  const colors = Colors.dark;
+  const { colors } = useTheme();
 
   const note = getNoteById(route.params.noteId);
 
   if (!note) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <Text style={{ color: colors.text, padding: 20 }}>Note not found.</Text>
+        <View style={styles.missingState}>
+          <Text style={[styles.missingTitle, { color: colors.text }]}>Note not found</Text>
+          <Text style={[styles.missingText, { color: colors.textSecondary }]}>
+            This note may have been deleted or moved.
+          </Text>
+          <TouchableOpacity
+            style={[styles.missingButton, { backgroundColor: colors.accent }]}
+            onPress={() => navigation.navigate('MainTabs')}
+            accessibilityRole="button"
+            accessibilityLabel="Go back to home"
+          >
+            <Text style={styles.missingButtonText}>Go Home</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
 
-  const platformColor = PLATFORM_COLORS[note.platform || 'manual'];
+  const platformColor = note.color || PLATFORM_COLORS[note.platform || 'manual'];
 
   const handleArchive = () => {
     Alert.alert('Archive Note', 'This note will be moved to the Archived folder.', [
@@ -71,8 +84,27 @@ export default function NoteDetailScreen() {
     ]);
   };
 
-  const handleOpenLink = () => {
-    if (note.url) Linking.openURL(note.url).catch(() => {});
+  const handleOpenLink = async () => {
+    if (!note.url) return;
+    try {
+      await Linking.openURL(note.url);
+    } catch (error) {
+      console.error('[NoteDetailScreen] Failed to open link', note.url, error);
+      Alert.alert(
+        'Cannot Open Link',
+        'The link could not be opened on this device. You can copy it and open it manually.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Copy Link',
+            onPress: async () => {
+              await Clipboard.setStringAsync(note.url!);
+              Alert.alert('Copied', 'Link copied to clipboard');
+            },
+          },
+        ]
+      );
+    }
   };
 
   const handleCopy = async () => {
@@ -92,29 +124,42 @@ export default function NoteDetailScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar
+        barStyle={colors.text === '#FFFFFF' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+      />
 
       {/* Top actions */}
       <View style={[styles.toolbar, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <Text style={[styles.backBtnText, { color: colors.accent }]}>← Back</Text>
         </TouchableOpacity>
         <View style={styles.toolbarActions}>
-          <TouchableOpacity onPress={() => togglePin(note.id)} style={styles.toolBtn}>
+          <TouchableOpacity
+            onPress={() => togglePin(note.id)}
+            style={styles.toolBtn}
+            accessibilityRole="button"
+            accessibilityLabel={note.pinned ? 'Unpin note' : 'Pin note'}
+          >
             <Text style={styles.toolBtnText}>{note.pinned ? '📌' : '📍'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleCopy} style={styles.toolBtn}>
+          <TouchableOpacity onPress={handleCopy} style={styles.toolBtn} accessibilityRole="button" accessibilityLabel="Copy note">
             <Text style={[styles.toolBtnLabel, { color: colors.accent }]}>Copy</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleShare} style={styles.toolBtn}>
+          <TouchableOpacity onPress={handleShare} style={styles.toolBtn} accessibilityRole="button" accessibilityLabel="Share note">
             <Text style={[styles.toolBtnLabel, { color: colors.accent }]}>Share</Text>
           </TouchableOpacity>
           {note.archived ? (
             <>
-              <TouchableOpacity onPress={handleRestore} style={styles.toolBtn}>
+              <TouchableOpacity onPress={handleRestore} style={styles.toolBtn} accessibilityRole="button" accessibilityLabel="Restore note">
                 <Text style={[styles.toolBtnLabel, { color: colors.accent }]}>Restore</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handlePermanentDelete} style={styles.toolBtn}>
+              <TouchableOpacity onPress={handlePermanentDelete} style={styles.toolBtn} accessibilityRole="button" accessibilityLabel="Delete note permanently">
                 <Text style={[styles.toolBtnLabel, { color: colors.error }]}>Delete</Text>
               </TouchableOpacity>
             </>
@@ -123,10 +168,12 @@ export default function NoteDetailScreen() {
               <TouchableOpacity
                 onPress={() => navigation.navigate('EditNote', { noteId: note.id })}
                 style={styles.toolBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Edit note"
               >
                 <Text style={[styles.toolBtnLabel, { color: colors.accent }]}>Edit</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleArchive} style={styles.toolBtn}>
+              <TouchableOpacity onPress={handleArchive} style={styles.toolBtn} accessibilityRole="button" accessibilityLabel="Archive note">
                 <Text style={[styles.toolBtnLabel, { color: colors.error }]}>Archive</Text>
               </TouchableOpacity>
             </>
@@ -162,6 +209,9 @@ export default function NoteDetailScreen() {
           <TouchableOpacity
             style={[styles.urlBox, { backgroundColor: colors.surface, borderColor: platformColor + '44' }]}
             onPress={handleOpenLink}
+            accessibilityRole="link"
+            accessibilityLabel={`Open saved link ${note.url}`}
+            accessibilityHint="Opens the original URL in another app or browser"
           >
             <Text style={[styles.urlLabel, { color: colors.textMuted }]}>🔗 Link</Text>
             <Text style={[styles.urlText, { color: platformColor }]} numberOfLines={2}>
@@ -215,6 +265,17 @@ export default function NoteDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  missingState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    gap: 10,
+  },
+  missingTitle: { fontSize: 22, fontWeight: '800' },
+  missingText: { fontSize: 14, textAlign: 'center', lineHeight: 21 },
+  missingButton: { marginTop: 8, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20 },
+  missingButtonText: { color: '#FFFFFF', fontWeight: '700' },
   toolbar: {
     flexDirection: 'row',
     alignItems: 'center',

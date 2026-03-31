@@ -6,7 +6,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNoteStore } from '../store/noteStore';
-import { Colors } from '../constants/colors';
+import { useTheme } from '../hooks/useTheme';
 import { RootStackParamList } from '../types';
 import NoteCard from '../components/NoteCard';
 import EmptyState from '../components/EmptyState';
@@ -15,12 +15,12 @@ type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
 const FILTERS = [
   { label: 'All', value: 'all' },
-  { label: '▶ YouTube', value: 'youtube' },
-  { label: '◆ Instagram', value: 'instagram' },
-  { label: '✦ Twitter', value: 'twitter' },
-  { label: '● Reddit', value: 'reddit' },
-  { label: '⊕ Web', value: 'web' },
-  { label: '✎ Manual', value: 'manual' },
+  { label: 'YouTube', value: 'youtube' },
+  { label: 'Instagram', value: 'instagram' },
+  { label: 'Twitter', value: 'twitter' },
+  { label: 'Reddit', value: 'reddit' },
+  { label: 'Web', value: 'web' },
+  { label: 'Notes', value: 'manual' },
 ];
 
 type SortOption = 'newest' | 'oldest' | 'az';
@@ -28,16 +28,33 @@ type SortOption = 'newest' | 'oldest' | 'az';
 const SORT_OPTIONS: { label: string; value: SortOption }[] = [
   { label: 'Newest', value: 'newest' },
   { label: 'Oldest', value: 'oldest' },
-  { label: 'A-Z Title', value: 'az' },
+  { label: 'A–Z', value: 'az' },
 ];
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning ☀️';
+  if (hour < 18) return 'Good afternoon 🌤';
+  return 'Good evening 🌙';
+}
+
+const PLATFORM_COLORS: Record<string, string> = {
+  youtube: '#FF0000',
+  instagram: '#C13584',
+  twitter: '#1DA1F2',
+  reddit: '#FF4500',
+  web: '#4CAF50',
+  manual: '#7C6FE0',
+};
 
 export default function HomeScreen() {
   const navigation = useNavigation<NavProp>();
-  const { notes, togglePin } = useNoteStore();
+  const { notes, togglePin, settings, loadData } = useNoteStore();
+  const { colors } = useTheme();
+
   const [filter, setFilter] = useState('all');
-  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [sortBy, setSortBy] = useState<SortOption>(settings.defaultSort);
   const [refreshing, setRefreshing] = useState(false);
-  const colors = Colors.dark;
 
   const activeNotes = notes.filter(n => !n.archived);
   const filtered = filter === 'all' ? activeNotes : activeNotes.filter(n => n.platform === filter);
@@ -54,30 +71,54 @@ export default function HomeScreen() {
     }
   });
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 500);
-  }, []);
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
+
+  const filterColor = filter !== 'all' ? PLATFORM_COLORS[filter] : colors.accent;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar
+        barStyle={colors.text === '#FFFFFF' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+      />
 
       {/* Header */}
       <View style={styles.header}>
         <View>
+          <Text style={[styles.greeting, { color: colors.textSecondary }]}>{getGreeting()}</Text>
           <Text style={[styles.appName, { color: colors.text }]}>Forward</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {activeNotes.length} {activeNotes.length === 1 ? 'note' : 'notes'} saved
-          </Text>
         </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={[styles.iconBtn, { backgroundColor: colors.surface }]}
-            onPress={() => navigation.navigate('AddNote', {})}
-          >
-            <Text style={[styles.iconBtnText, { color: colors.text }]}>+</Text>
-          </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.addBtn, { backgroundColor: colors.accent }]}
+          onPress={() => navigation.navigate('AddNote', {})}
+        >
+          <Text style={styles.addBtnText}>+ New</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Stats bar */}
+      <View style={[styles.statsBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.statItem}>
+          <Text style={[styles.statNum, { color: colors.accent }]}>{activeNotes.length}</Text>
+          <Text style={[styles.statLbl, { color: colors.textMuted }]}>saved</Text>
+        </View>
+        <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+        <View style={styles.statItem}>
+          <Text style={[styles.statNum, { color: colors.secondary }]}>
+            {notes.filter(n => n.pinned).length}
+          </Text>
+          <Text style={[styles.statLbl, { color: colors.textMuted }]}>pinned</Text>
+        </View>
+        <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+        <View style={styles.statItem}>
+          <Text style={[styles.statNum, { color: colors.warning }]}>
+            {notes.filter(n => n.archived).length}
+          </Text>
+          <Text style={[styles.statLbl, { color: colors.textMuted }]}>archived</Text>
         </View>
       </View>
 
@@ -88,27 +129,31 @@ export default function HomeScreen() {
         keyExtractor={item => item.value}
         contentContainerStyle={styles.filtersContainer}
         showsHorizontalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[
-              styles.chip,
-              {
-                backgroundColor: filter === item.value ? colors.accent : colors.surface,
-                borderColor: filter === item.value ? colors.accent : colors.border,
-              },
-            ]}
-            onPress={() => setFilter(item.value)}
-          >
-            <Text
+        renderItem={({ item }) => {
+          const isActive = filter === item.value;
+          const chipColor = item.value !== 'all' ? PLATFORM_COLORS[item.value] : colors.accent;
+          return (
+            <TouchableOpacity
               style={[
-                styles.chipText,
-                { color: filter === item.value ? '#FFFFFF' : colors.textSecondary },
+                styles.chip,
+                {
+                  backgroundColor: isActive ? chipColor : colors.surface,
+                  borderColor: isActive ? chipColor : colors.border,
+                },
               ]}
+              onPress={() => setFilter(item.value)}
             >
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        )}
+              <Text
+                style={[
+                  styles.chipText,
+                  { color: isActive ? '#FFFFFF' : colors.textSecondary },
+                ]}
+              >
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        }}
       />
 
       {/* Sort Row */}
@@ -119,8 +164,8 @@ export default function HomeScreen() {
             style={[
               styles.sortChip,
               {
-                backgroundColor: sortBy === opt.value ? colors.accent + '22' : 'transparent',
-                borderColor: sortBy === opt.value ? colors.accent : colors.border,
+                backgroundColor: sortBy === opt.value ? filterColor + '22' : 'transparent',
+                borderColor: sortBy === opt.value ? filterColor : colors.border,
               },
             ]}
             onPress={() => setSortBy(opt.value)}
@@ -128,13 +173,16 @@ export default function HomeScreen() {
             <Text
               style={[
                 styles.sortChipText,
-                { color: sortBy === opt.value ? colors.accent : colors.textMuted },
+                { color: sortBy === opt.value ? filterColor : colors.textMuted },
               ]}
             >
               {opt.label}
             </Text>
           </TouchableOpacity>
         ))}
+        <Text style={[styles.resultCount, { color: colors.textMuted }]}>
+          {sorted.length} {sorted.length === 1 ? 'result' : 'results'}
+        </Text>
       </View>
 
       {/* Notes List */}
@@ -145,7 +193,6 @@ export default function HomeScreen() {
           description="Share any link, text, or thought from any app — Forward will smart-organize it for you."
           actionLabel="Add Your First Note"
           onAction={() => navigation.navigate('AddNote', {})}
-          theme="dark"
         />
       ) : (
         <FlatList
@@ -164,7 +211,6 @@ export default function HomeScreen() {
               note={item}
               onPress={() => navigation.navigate('NoteDetail', { noteId: item.id })}
               onLongPress={() => togglePin(item.id)}
-              theme="dark"
             />
           )}
         />
@@ -189,30 +235,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 12,
   },
+  greeting: { fontSize: 13, marginBottom: 2 },
   appName: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
-  subtitle: { fontSize: 13, marginTop: 2 },
-  headerActions: { flexDirection: 'row', gap: 10 },
-  iconBtn: {
-    width: 44,
-    height: 44,
+  addBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  iconBtnText: { fontSize: 24, fontWeight: '300' },
+  addBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
+  statsBar: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+  },
+  statItem: { flex: 1, alignItems: 'center' },
+  statNum: { fontSize: 20, fontWeight: '800' },
+  statLbl: { fontSize: 11, marginTop: 2 },
+  statDivider: { width: 1, marginHorizontal: 8 },
   filtersContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 6,
     gap: 8,
   },
   sortRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingBottom: 8,
     gap: 8,
@@ -224,12 +280,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   sortChipText: { fontSize: 12, fontWeight: '500' },
+  resultCount: { marginLeft: 'auto', fontSize: 12 },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1,
-    marginRight: 8,
+    marginRight: 4,
   },
   chipText: { fontSize: 13, fontWeight: '500' },
   list: { paddingTop: 8, paddingBottom: 100 },

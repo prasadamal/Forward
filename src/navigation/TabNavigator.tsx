@@ -1,7 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
-import { Colors } from '../constants/colors';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../hooks/useTheme';
 import { RootTabParamList } from '../types';
 import HomeScreen from '../screens/HomeScreen';
 import FoldersScreen from '../screens/FoldersScreen';
@@ -10,15 +10,17 @@ import SettingsScreen from '../screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
-const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
-  Home: { active: '✉️', inactive: '✉' },
-  Folders: { active: '📁', inactive: '📂' },
-  Search: { active: '🔍', inactive: '🔎' },
-  Settings: { active: '⚙️', inactive: '⚙' },
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const TAB_ICONS: Record<string, { active: IoniconName; inactive: IoniconName }> = {
+  Home: { active: 'mail', inactive: 'mail-outline' },
+  Folders: { active: 'folder', inactive: 'folder-outline' },
+  Search: { active: 'search', inactive: 'search-outline' },
+  Settings: { active: 'settings', inactive: 'settings-outline' },
 };
 
 export default function TabNavigator() {
-  const colors = Colors.dark;
+  const { colors } = useTheme();
 
   return (
     <Tab.Navigator
@@ -36,10 +38,13 @@ export default function TabNavigator() {
         tabBarInactiveTintColor: colors.tabBarInactive,
         tabBarIcon: ({ focused, color }) => {
           const icons = TAB_ICONS[route.name];
+          if (!icons) return <Ionicons name="ellipse-outline" size={22} color={color} />;
           return (
-            <Text style={{ fontSize: 20 }}>
-              {focused ? icons.active : icons.inactive}
-            </Text>
+            <Ionicons
+              name={focused ? icons.active : icons.inactive}
+              size={22}
+              color={color}
+            />
           );
         },
         tabBarLabelStyle: {

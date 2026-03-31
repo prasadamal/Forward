@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Colors } from '../constants/colors';
+import { useTheme } from '../hooks/useTheme';
 
 interface Props {
   icon: string;
@@ -11,8 +11,8 @@ interface Props {
   theme?: 'dark' | 'light';
 }
 
-export default function EmptyState({ icon, title, description, actionLabel, onAction, theme = 'dark' }: Props) {
-  const colors = Colors[theme];
+export default function EmptyState({ icon, title, description, actionLabel, onAction }: Props) {
+  const { colors } = useTheme();
 
   return (
     <View style={styles.container}>

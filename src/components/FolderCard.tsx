@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SmartFolder } from '../types';
-import { Colors } from '../constants/colors';
+import { useTheme } from '../hooks/useTheme';
 
 interface Props {
   folder: SmartFolder;
@@ -9,14 +9,17 @@ interface Props {
   theme?: 'dark' | 'light';
 }
 
-export default function FolderCard({ folder, onPress, theme = 'dark' }: Props) {
-  const colors = Colors[theme];
+export default function FolderCard({ folder, onPress }: Props) {
+  const { colors } = useTheme();
 
   return (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
       onPress={onPress}
       activeOpacity={0.75}
+      accessibilityRole="button"
+      accessibilityLabel={`${folder.name} folder`}
+      accessibilityHint={`Open ${folder.name} folder with ${folder.noteIds.length} ${folder.noteIds.length === 1 ? 'note' : 'notes'}`}
     >
       <View style={[styles.emojiCircle, { backgroundColor: folder.color + '33' }]}>
         <Text style={styles.emoji}>{folder.emoji}</Text>

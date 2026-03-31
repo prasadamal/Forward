@@ -53,3 +53,16 @@ export const NOTE_COLORS = [
   '#1E1E1E', '#1A2A1A', '#1A1A2A', '#2A1A1A', '#2A2A1A',
   '#1A2A2A', '#2A1A2A', '#1E2A1E', '#1E1E2A', '#2A1E1E',
 ];
+
+export const NOTE_ACCENT_COLORS = [
+  '#7C6FE0',
+  '#FF6584',
+  '#4CAF50',
+  '#FF9800',
+  '#1DA1F2',
+  '#FF4500',
+  '#E91E63',
+  '#00BCD4',
+  '#9C27B0',
+  '#FF6B35',
+];

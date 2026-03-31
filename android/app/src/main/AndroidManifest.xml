@@ -15,18 +15,35 @@
     <meta-data android:name="expo.modules.updates.ENABLED" android:value="false"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH" android:value="ALWAYS"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS" android:value="0"/>
+
+    <!-- Main app activity – also handles "Forward – Pick Folder" share action -->
     <activity android:name=".MainActivity" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:theme="@style/Theme.App.SplashScreen" android:exported="true" android:screenOrientation="portrait">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
-      <intent-filter android:autoVerify="true" data-generated="true">
+      <intent-filter android:autoVerify="true">
         <action android:name="android.intent.action.VIEW"/>
         <data android:scheme="forward"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <category android:name="android.intent.category.DEFAULT"/>
       </intent-filter>
-      <intent-filter data-generated="true">
+      <!-- "Forward – Pick Folder" share target -->
+      <intent-filter android:label="Forward – Pick Folder">
+        <action android:name="android.intent.action.SEND"/>
+        <data android:mimeType="text/plain"/>
+        <data android:mimeType="text/html"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+      </intent-filter>
+    </activity>
+
+    <!-- Lightweight trampoline for "Forward – Auto Add" share target -->
+    <activity
+      android:name=".ShareActivity"
+      android:exported="true"
+      android:theme="@android:style/Theme.NoDisplay"
+      android:label="Forward – Auto Add">
+      <intent-filter android:label="Forward – Auto Add">
         <action android:name="android.intent.action.SEND"/>
         <data android:mimeType="text/plain"/>
         <data android:mimeType="text/html"/>

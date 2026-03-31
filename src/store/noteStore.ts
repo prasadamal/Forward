@@ -6,47 +6,64 @@ import {
   assignEmoji, getFolderColor,
 } from '../utils/smartOrganizer';
 
-const STORAGE_KEY = '@forward_data_v1';
+export const STORAGE_KEY = '@forward_data_v1';
 
-const SYSTEM_FOLDERS: SmartFolder[] = [
-  {
-    id: 'all',
-    name: 'All Notes',
-    emoji: '📝',
-    noteIds: [],
-    createdAt: new Date().toISOString(),
-    isSystem: true,
-    color: '#7C6FE0',
-  },
-  {
-    id: 'pinned',
-    name: 'Pinned',
-    emoji: '📌',
-    noteIds: [],
-    createdAt: new Date().toISOString(),
-    isSystem: true,
-    color: '#FF6584',
-  },
-  {
-    id: 'archived',
-    name: 'Archived',
-    emoji: '🗑️',
-    noteIds: [],
-    createdAt: new Date().toISOString(),
-    isSystem: true,
-    color: '#FF9800',
-  },
-];
+function buildSystemFolders(): SmartFolder[] {
+  const createdAt = new Date().toISOString();
+  return [
+    {
+      id: 'all',
+      name: 'All Notes',
+      emoji: '📝',
+      noteIds: [],
+      createdAt,
+      isSystem: true,
+      color: '#7C6FE0',
+    },
+    {
+      id: 'pinned',
+      name: 'Pinned',
+      emoji: '📌',
+      noteIds: [],
+      createdAt,
+      isSystem: true,
+      color: '#FF6584',
+    },
+    {
+      id: 'archived',
+      name: 'Archived',
+      emoji: '🗑️',
+      noteIds: [],
+      createdAt,
+      isSystem: true,
+      color: '#FF9800',
+    },
+  ];
+}
+
+function buildDefaultSettings(): AppSettings {
+  return {
+    theme: 'dark',
+    defaultView: 'notes',
+    defaultSort: 'newest',
+    recentSearches: [],
+  };
+}
+
+function normalizeDefaultSort(value: unknown): AppSettings['defaultSort'] {
+  return value === 'oldest' || value === 'az' || value === 'newest' ? value : 'newest';
+}
 
 interface NoteStore {
   notes: Note[];
   folders: SmartFolder[];
   settings: AppSettings;
   isLoading: boolean;
+  storageError: string | null;
 
   // Actions
   loadData: () => Promise<void>;
-  addNote: (content: string) => Promise<Note>;
+  addNote: (content: string, color?: string) => Promise<Note>;
   editNote: (id: string, updates: Partial<Note>) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
   togglePin: (id: string) => Promise<void>;
@@ -59,6 +76,8 @@ interface NoteStore {
   getArchivedNotes: () => Note[];
   searchNotes: (query: string) => Note[];
   updateSettings: (updates: Partial<AppSettings>) => Promise<void>;
+  clearAllData: () => Promise<void>;
+  dismissStorageError: () => void;
   getNoteById: (id: string) => Note | undefined;
   getFolderById: (id: string) => SmartFolder | undefined;
   getNotesForFolder: (folderId: string) => Note[];
@@ -71,30 +90,45 @@ function generateId(): string {
 
 export const useNoteStore = create<NoteStore>((set, get) => ({
   notes: [],
-  folders: SYSTEM_FOLDERS,
-  settings: { theme: 'dark', defaultView: 'notes' },
+  folders: buildSystemFolders(),
+  settings: buildDefaultSettings(),
   isLoading: true,
+  storageError: null,
 
   loadData: async () => {
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       if (raw) {
         const { notes, folders, settings } = JSON.parse(raw);
+        const storedSettings = settings || {};
         set({
           notes: notes || [],
-          folders: folders || SYSTEM_FOLDERS,
-          settings: settings || { theme: 'dark', defaultView: 'notes' },
+          folders: folders || buildSystemFolders(),
+          settings: {
+            theme: storedSettings.theme || 'dark',
+            defaultView: storedSettings.defaultView || 'notes',
+            defaultSort: normalizeDefaultSort(storedSettings.defaultSort),
+            recentSearches: storedSettings.recentSearches || [],
+          },
           isLoading: false,
+          storageError: null,
         });
       } else {
-        set({ isLoading: false });
+        set({ isLoading: false, storageError: null });
       }
-    } catch {
-      set({ isLoading: false });
+    } catch (error) {
+      console.error('[noteStore] Failed to load data', error);
+      set({
+        notes: [],
+        folders: buildSystemFolders(),
+        settings: buildDefaultSettings(),
+        isLoading: false,
+        storageError: 'Saved data could not be loaded. Forward started with a fresh local library.',
+      });
     }
   },
 
-  addNote: async (content: string) => {
+  addNote: async (content: string, color?: string) => {
     const url = extractUrl(content);
     const platform = url ? detectPlatform(url) : 'manual';
     const { tags, folders: detectedFolderNames } = extractTags(content);
@@ -112,6 +146,7 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
       createdAt: now,
       updatedAt: now,
       pinned: false,
+      color,
       archived: false,
     };
 
@@ -311,7 +346,8 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
         !n.archived &&
         (n.title.toLowerCase().includes(lower) ||
         n.content.toLowerCase().includes(lower) ||
-        n.tags.some(t => t.includes(lower)))
+        n.tags.some(t => t.includes(lower)) ||
+        (n.url ? n.url.toLowerCase().includes(lower) : false))
     );
   },
 
@@ -321,6 +357,27 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     set({ settings: updatedSettings });
     await persist(state.notes, state.folders, updatedSettings);
   },
+
+  clearAllData: async () => {
+    const nextFolders = buildSystemFolders();
+    const nextSettings = buildDefaultSettings();
+    set({
+      notes: [],
+      folders: nextFolders,
+      settings: nextSettings,
+      storageError: null,
+    });
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+      console.error('[noteStore] Failed to clear data', error);
+      set({
+        storageError: 'Forward reset on screen, but local storage could not be fully cleared.',
+      });
+    }
+  },
+
+  dismissStorageError: () => set({ storageError: null }),
 
   getNoteById: (id) => get().notes.find(n => n.id === id),
   getFolderById: (id) => get().folders.find(f => f.id === id),
@@ -338,7 +395,11 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
 async function persist(notes: Note[], folders: SmartFolder[], settings: AppSettings) {
   try {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ notes, folders, settings }));
-  } catch {
-    // ignore persist errors silently
+    useNoteStore.setState({ storageError: null });
+  } catch (error) {
+    console.error('[noteStore] Failed to persist data', error);
+    useNoteStore.setState({
+      storageError: 'Your latest changes could not be saved locally. Keep the app open and try again.',
+    });
   }
 }

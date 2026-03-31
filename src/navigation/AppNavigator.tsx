@@ -6,6 +6,7 @@ import NoteDetailScreen from '../screens/NoteDetailScreen';
 import FolderDetailScreen from '../screens/FolderDetailScreen';
 import AddNoteScreen from '../screens/AddNoteScreen';
 import EditNoteScreen from '../screens/EditNoteScreen';
+import ShareReceivedScreen from '../screens/ShareReceivedScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -17,6 +18,11 @@ export default function AppNavigator() {
       <Stack.Screen name="FolderDetail" component={FolderDetailScreen} />
       <Stack.Screen name="AddNote" component={AddNoteScreen} />
       <Stack.Screen name="EditNote" component={EditNoteScreen} />
+      <Stack.Screen
+        name="ShareReceived"
+        component={ShareReceivedScreen}
+        options={{ presentation: 'modal' }}
+      />
     </Stack.Navigator>
   );
 }
