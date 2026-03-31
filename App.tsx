@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useColorScheme, Linking } from 'react-native';
+import { useColorScheme, Linking, View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useNoteStore } from './src/store/noteStore';
@@ -23,6 +23,7 @@ function navigateToShare(url: string) {
 
 export default function App() {
   const loadData = useNoteStore(state => state.loadData);
+  const isLoading = useNoteStore(state => state.isLoading);
   const settings = useNoteStore(state => state.settings);
   const systemScheme = useColorScheme();
 
@@ -30,21 +31,13 @@ export default function App() {
     loadData();
   }, []);
 
+  // Handle deep links while app is already in foreground/background
   useEffect(() => {
-    // Handle deep link that launched the app
-    Linking.getInitialURL().then(url => {
-      if (url && url.startsWith('forward://share')) {
-        navigateToShare(url);
-      }
-    });
-
-    // Handle deep links while app is already in foreground/background
     const sub = Linking.addEventListener('url', ({ url }) => {
       if (url.startsWith('forward://share')) {
         navigateToShare(url);
       }
     });
-
     return () => sub.remove();
   }, []);
 
@@ -52,8 +45,38 @@ export default function App() {
     settings.theme === 'dark' ||
     (settings.theme === 'system' && systemScheme !== 'light');
 
+  // Show a minimal loading screen while data is being read from AsyncStorage.
+  // This prevents a flash of empty content before the store is hydrated.
+  if (isLoading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: isDark ? '#0A0A0A' : '#F5F5F5',
+        }}
+      >
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <ActivityIndicator size="large" color="#7C6FE0" />
+      </View>
+    );
+  }
+
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={() => {
+        // Process the URL that originally opened this app (e.g. share intent).
+        // Using onReady guarantees the navigator is fully mounted before we try
+        // to navigate, so navigationRef.isReady() will always be true here.
+        Linking.getInitialURL().then(url => {
+          if (url && url.startsWith('forward://share')) {
+            navigateToShare(url);
+          }
+        });
+      }}
+    >
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <AppNavigator />
     </NavigationContainer>

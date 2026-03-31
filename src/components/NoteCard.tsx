@@ -29,6 +29,16 @@ const PLATFORM_LABELS: Record<string, string> = {
   manual: 'Note',
 };
 
+/** Extract the hostname from a URL, stripping leading "www.". Falls back to a 40-char slice. */
+function getDomain(url: string): string {
+  try {
+    const hostname = new URL(url).hostname;
+    return hostname.replace(/^www\./, '');
+  } catch {
+    return url.slice(0, 40);
+  }
+}
+
 export default function NoteCard({ note, onPress, onLongPress }: Props) {
   const { colors } = useTheme();
   const platformColor = note.color || PLATFORM_COLORS[note.platform || 'manual'];
@@ -60,8 +70,13 @@ export default function NoteCard({ note, onPress, onLongPress }: Props) {
         </Text>
 
         {note.url ? (
-          <Text style={[styles.url, { color: colors.accent }]} numberOfLines={1}>
-            {note.url}
+          <Text
+            style={[styles.url, { color: colors.accent }]}
+            numberOfLines={1}
+            accessibilityLabel={`Link: ${getDomain(note.url)}`}
+            accessibilityRole="link"
+          >
+            🔗 {getDomain(note.url)}
           </Text>
         ) : (
           <Text style={[styles.content, { color: colors.textSecondary }]} numberOfLines={2}>

@@ -38,6 +38,7 @@ export default function TabNavigator() {
         tabBarInactiveTintColor: colors.tabBarInactive,
         tabBarIcon: ({ focused, color }) => {
           const icons = TAB_ICONS[route.name];
+          if (!icons) return <Ionicons name="ellipse-outline" size={22} color={color} />;
           return (
             <Ionicons
               name={focused ? icons.active : icons.inactive}

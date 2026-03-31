@@ -80,15 +80,15 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       if (raw) {
         const { notes, folders, settings } = JSON.parse(raw);
-        const s = settings || {};
+        const storedSettings = settings || {};
         set({
           notes: notes || [],
           folders: folders || SYSTEM_FOLDERS,
           settings: {
-            theme: s.theme || 'dark',
-            defaultView: s.defaultView || 'notes',
-            defaultSort: s.defaultSort || 'newest',
-            recentSearches: s.recentSearches || [],
+            theme: storedSettings.theme || 'dark',
+            defaultView: storedSettings.defaultView || 'notes',
+            defaultSort: storedSettings.defaultSort || 'newest',
+            recentSearches: storedSettings.recentSearches || [],
           },
           isLoading: false,
         });
@@ -318,7 +318,8 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
         !n.archived &&
         (n.title.toLowerCase().includes(lower) ||
         n.content.toLowerCase().includes(lower) ||
-        n.tags.some(t => t.includes(lower)))
+        n.tags.some(t => t.includes(lower)) ||
+        (n.url ? n.url.toLowerCase().includes(lower) : false))
     );
   },
 

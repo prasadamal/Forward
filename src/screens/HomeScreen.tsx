@@ -49,7 +49,7 @@ const PLATFORM_COLORS: Record<string, string> = {
 
 export default function HomeScreen() {
   const navigation = useNavigation<NavProp>();
-  const { notes, togglePin, settings } = useNoteStore();
+  const { notes, togglePin, settings, loadData } = useNoteStore();
   const { colors } = useTheme();
 
   const [filter, setFilter] = useState('all');
@@ -73,10 +73,11 @@ export default function HomeScreen() {
     }
   });
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 500);
-  }, []);
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
 
   const filterColor = filter !== 'all' ? PLATFORM_COLORS[filter] : colors.accent;
 

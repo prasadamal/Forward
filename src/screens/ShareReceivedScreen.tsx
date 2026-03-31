@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, SafeAreaView, StatusBar,
-  TouchableOpacity, ActivityIndicator, Linking,
+  TouchableOpacity, ActivityIndicator, Linking, Alert,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -41,17 +41,22 @@ export default function ShareReceivedScreen() {
 
   const { sharedText, mode } = route.params;
 
+  // Compute URL first (pure, synchronous) so we can initialise loadingMeta correctly.
+  // Initialising to `true` when a URL is present prevents the auto-save effect from
+  // firing on the very first render before the OG-fetch effect has had a chance to set
+  // loadingMeta = true (race condition with both effects running after initial render).
+  const url = extractUrl(sharedText);
+  const platform = url ? detectPlatform(url) : 'manual';
+  const platformColor = PLATFORM_COLORS[platform];
+
   const [ogMeta, setOgMeta] = useState<OGMetadata>({});
-  const [loadingMeta, setLoadingMeta] = useState(false);
+  const [loadingMeta, setLoadingMeta] = useState(!!url); // true until OG fetch resolves
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [savedNoteId, setSavedNoteId] = useState<string | undefined>();
   const [showPicker, setShowPicker] = useState(false);
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
 
-  const url = extractUrl(sharedText);
-  const platform = url ? detectPlatform(url) : 'manual';
-  const platformColor = PLATFORM_COLORS[platform];
   const duplicate = url ? findNoteByUrl(url) : undefined;
 
   const handleAutoAdd = useCallback(async () => {
@@ -72,7 +77,6 @@ export default function ShareReceivedScreen() {
 
   useEffect(() => {
     if (url) {
-      setLoadingMeta(true);
       fetchOpenGraph(url).then(meta => {
         setOgMeta(meta);
         setLoadingMeta(false);
@@ -177,7 +181,13 @@ export default function ShareReceivedScreen() {
             {sharedText}
           </Text>
           {url && (
-            <TouchableOpacity onPress={() => Linking.openURL(url).catch(() => {})}>
+            <TouchableOpacity
+              onPress={() =>
+                Linking.openURL(url).catch(() =>
+                  Alert.alert('Cannot Open Link', 'The link could not be opened on this device.')
+                )
+              }
+            >
               <Text style={[styles.linkText, { color: platformColor }]} numberOfLines={1}>
                 🔗 {url}
               </Text>
