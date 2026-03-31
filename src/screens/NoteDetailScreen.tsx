@@ -89,7 +89,7 @@ export default function NoteDetailScreen() {
     try {
       await Linking.openURL(note.url);
     } catch (error) {
-      console.error('[NoteDetailScreen] Failed to open link', error);
+      console.error('[NoteDetailScreen] Failed to open link', note.url, error);
       Alert.alert(
         'Cannot Open Link',
         'The link could not be opened on this device. You can copy it and open it manually.',
