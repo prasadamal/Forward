@@ -8,20 +8,12 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Clipboard from 'expo-clipboard';
 import { useNoteStore } from '../store/noteStore';
 import { useTheme } from '../hooks/useTheme';
+import { PLATFORM_COLORS } from '../constants/colors';
 import { RootStackParamList } from '../types';
 import { formatFullDate } from '../utils/dateUtils';
 
 type RouteType = RouteProp<RootStackParamList, 'NoteDetail'>;
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
-
-const PLATFORM_COLORS: Record<string, string> = {
-  youtube: '#FF0000',
-  instagram: '#C13584',
-  twitter: '#1DA1F2',
-  reddit: '#FF4500',
-  web: '#4CAF50',
-  manual: '#7C6FE0',
-};
 
 export default function NoteDetailScreen() {
   const route = useRoute<RouteType>();

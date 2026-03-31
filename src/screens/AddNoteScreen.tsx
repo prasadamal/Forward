@@ -53,6 +53,17 @@ export default function AddNoteScreen() {
     navigation.replace('NoteDetail', { noteId: note.id });
   };
 
+  const handleCancel = () => {
+    if (content.trim()) {
+      Alert.alert('Discard Note?', 'You have unsaved content that will be lost.', [
+        { text: 'Keep Editing', style: 'cancel' },
+        { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() },
+      ]);
+    } else {
+      navigation.goBack();
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar
@@ -65,7 +76,7 @@ export default function AddNoteScreen() {
       >
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity onPress={handleCancel}>
             <Text style={[styles.cancel, { color: colors.textSecondary }]}>Cancel</Text>
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>New Note</Text>

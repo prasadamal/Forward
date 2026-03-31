@@ -8,10 +8,9 @@ interface Props {
   description: string;
   actionLabel?: string;
   onAction?: () => void;
-  theme?: 'dark' | 'light';
 }
 
-export default function EmptyState({ icon, title, description, actionLabel, onAction }: Props) {
+function EmptyState({ icon, title, description, actionLabel, onAction }: Props) {
   const { colors } = useTheme();
 
   return (
@@ -63,3 +62,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+
+export default React.memo(EmptyState);

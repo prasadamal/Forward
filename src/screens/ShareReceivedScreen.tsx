@@ -7,6 +7,7 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNoteStore } from '../store/noteStore';
 import { useTheme } from '../hooks/useTheme';
+import { PLATFORM_COLORS, PLATFORM_LABELS } from '../constants/colors';
 import { RootStackParamList } from '../types';
 import { extractUrl, detectPlatform } from '../utils/smartOrganizer';
 import { fetchOpenGraph, OGMetadata } from '../utils/openGraph';
@@ -14,24 +15,6 @@ import FolderPicker from '../components/FolderPicker';
 
 type RouteType = RouteProp<RootStackParamList, 'ShareReceived'>;
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
-
-const PLATFORM_COLORS: Record<string, string> = {
-  youtube: '#FF0000',
-  instagram: '#C13584',
-  twitter: '#1DA1F2',
-  reddit: '#FF4500',
-  web: '#4CAF50',
-  manual: '#7C6FE0',
-};
-
-const PLATFORM_LABELS: Record<string, string> = {
-  youtube: 'YouTube',
-  instagram: 'Instagram',
-  twitter: 'Twitter / X',
-  reddit: 'Reddit',
-  web: 'Web',
-  manual: 'Note',
-};
 
 export default function ShareReceivedScreen() {
   const route = useRoute<RouteType>();
@@ -98,14 +81,19 @@ export default function ShareReceivedScreen() {
   const handlePickerConfirm = async () => {
     setShowPicker(false);
     setSaving(true);
-    const note = await addNote(buildNoteContent());
-    // Move to each selected folder
-    for (const folderId of selectedFolderIds) {
-      await moveNoteToFolder(note.id, folderId);
+    try {
+      const note = await addNote(buildNoteContent());
+      // Move to each selected folder
+      for (const folderId of selectedFolderIds) {
+        await moveNoteToFolder(note.id, folderId);
+      }
+      setSavedNoteId(note.id);
+    } catch (error) {
+      console.error('[ShareReceivedScreen] Failed to save note to folders', error);
+      Alert.alert('Save Error', 'The note was created but some folder assignments may have failed.');
     }
     setSaving(false);
     setSaved(true);
-    setSavedNoteId(note.id);
   };
 
   const handleOpenSaved = () => {

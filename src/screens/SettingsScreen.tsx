@@ -6,15 +6,16 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import { useNoteStore } from '../store/noteStore';
 import { useTheme } from '../hooks/useTheme';
+import { PLATFORM_COLORS } from '../constants/colors';
 import { Platform as PlatformType } from '../types';
 
 const PLATFORM_STATS: { key: PlatformType; label: string; color: string }[] = [
-  { key: 'youtube', label: 'YouTube', color: '#FF0000' },
-  { key: 'instagram', label: 'Instagram', color: '#C13584' },
-  { key: 'twitter', label: 'Twitter', color: '#1DA1F2' },
-  { key: 'reddit', label: 'Reddit', color: '#FF4500' },
-  { key: 'web', label: 'Web', color: '#4CAF50' },
-  { key: 'manual', label: 'Manual', color: '#7C6FE0' },
+  { key: 'youtube', label: 'YouTube', color: PLATFORM_COLORS.youtube },
+  { key: 'instagram', label: 'Instagram', color: PLATFORM_COLORS.instagram },
+  { key: 'twitter', label: 'Twitter', color: PLATFORM_COLORS.twitter },
+  { key: 'reddit', label: 'Reddit', color: PLATFORM_COLORS.reddit },
+  { key: 'web', label: 'Web', color: PLATFORM_COLORS.web },
+  { key: 'manual', label: 'Manual', color: PLATFORM_COLORS.manual },
 ];
 
 export default function SettingsScreen() {
