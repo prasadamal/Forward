@@ -29,13 +29,15 @@ const PLATFORM_LABELS: Record<string, string> = {
   manual: 'Note',
 };
 
+const MAX_FALLBACK_TITLE_LENGTH = 40;
+
 /** Extract the hostname from a URL, stripping leading "www.". Falls back to a shortened URL. */
 function getDomain(url: string): string {
   try {
     const hostname = new URL(url).hostname;
     return hostname.replace(/^www\./, '');
   } catch {
-    return `${url.slice(0, 40)}${url.length > 40 ? '…' : ''}`;
+    return `${url.slice(0, MAX_FALLBACK_TITLE_LENGTH)}${url.length > MAX_FALLBACK_TITLE_LENGTH ? '…' : ''}`;
   }
 }
 
@@ -43,7 +45,10 @@ export default function NoteCard({ note, onPress, onLongPress }: Props) {
   const { colors } = useTheme();
   const platformColor = note.color || PLATFORM_COLORS[note.platform || 'manual'];
   const platformLabel = PLATFORM_LABELS[note.platform || 'manual'];
-  const displayTitle = note.title.trim() || note.content.trim().slice(0, 40) || 'Untitled Note';
+  const displayTitle =
+    note.title.trim() ||
+    note.content.trim().slice(0, MAX_FALLBACK_TITLE_LENGTH) ||
+    'Untitled Note';
   const displayContent = note.content.trim() || 'No preview available';
 
   return (

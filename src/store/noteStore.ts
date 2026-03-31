@@ -50,6 +50,10 @@ function buildDefaultSettings(): AppSettings {
   };
 }
 
+function normalizeDefaultSort(value: unknown): AppSettings['defaultSort'] {
+  return value === 'oldest' || value === 'az' || value === 'newest' ? value : 'newest';
+}
+
 interface NoteStore {
   notes: Note[];
   folders: SmartFolder[];
@@ -103,7 +107,7 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
           settings: {
             theme: storedSettings.theme || 'dark',
             defaultView: storedSettings.defaultView || 'notes',
-            defaultSort: storedSettings.defaultSort || 'newest',
+            defaultSort: normalizeDefaultSort(storedSettings.defaultSort),
             recentSearches: storedSettings.recentSearches || [],
           },
           isLoading: false,

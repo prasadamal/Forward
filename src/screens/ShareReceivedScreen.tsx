@@ -58,6 +58,10 @@ export default function ShareReceivedScreen() {
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
 
   const duplicate = url ? findNoteByUrl(url) : undefined;
+  const buildNoteContent = useCallback(
+    () => (ogMeta.title ? `${ogMeta.title}\n\n${sharedText}` : sharedText),
+    [ogMeta.title, sharedText]
+  );
 
   const handleAutoAdd = useCallback(async () => {
     if (duplicate) {
@@ -66,14 +70,11 @@ export default function ShareReceivedScreen() {
       return;
     }
     setSaving(true);
-    const content = ogMeta.title
-      ? `${ogMeta.title}\n\n${sharedText}`
-      : sharedText;
-    const note = await addNote(content);
+    const note = await addNote(buildNoteContent());
     setSaving(false);
     setSaved(true);
     setSavedNoteId(note.id);
-  }, [duplicate, ogMeta, sharedText, addNote]);
+  }, [duplicate, addNote, buildNoteContent]);
 
   useEffect(() => {
     if (url) {
@@ -97,10 +98,7 @@ export default function ShareReceivedScreen() {
   const handlePickerConfirm = async () => {
     setShowPicker(false);
     setSaving(true);
-    const content = ogMeta.title
-      ? `${ogMeta.title}\n\n${sharedText}`
-      : sharedText;
-    const note = await addNote(content);
+    const note = await addNote(buildNoteContent());
     // Move to each selected folder
     for (const folderId of selectedFolderIds) {
       await moveNoteToFolder(note.id, folderId);
