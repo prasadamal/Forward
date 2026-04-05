@@ -23,9 +23,24 @@ export default function FoldersScreen() {
   const userFolders = folders.filter(f => !f.isSystem);
   const systemFolders = folders.filter(f => f.isSystem);
 
+  const MAX_FOLDER_NAME_LENGTH = 50;
+
   const handleCreate = async () => {
-    if (!newFolderName.trim()) return;
-    await createFolder(newFolderName.trim());
+    const trimmed = newFolderName.trim();
+    if (!trimmed) {
+      Alert.alert('Name Required', 'Please enter a folder name.');
+      return;
+    }
+    if (trimmed.length > MAX_FOLDER_NAME_LENGTH) {
+      Alert.alert('Name Too Long', `Folder names must be ${MAX_FOLDER_NAME_LENGTH} characters or fewer.`);
+      return;
+    }
+    const existing = folders.find(f => f.name.toLowerCase() === trimmed.toLowerCase());
+    if (existing) {
+      Alert.alert('Already Exists', `A folder named "${existing.name}" already exists.`);
+      return;
+    }
+    await createFolder(trimmed);
     Keyboard.dismiss();
     setNewFolderName('');
     setShowCreate(false);

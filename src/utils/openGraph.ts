@@ -62,6 +62,16 @@ function decodeHtmlEntities(text: string): string {
 }
 
 export async function fetchOpenGraph(url: string, timeoutMs = 5000): Promise<OGMetadata> {
+  // Validate URL before attempting a network request
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return {};
+    }
+  } catch {
+    return {};
+  }
+
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);

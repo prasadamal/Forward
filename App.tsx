@@ -38,7 +38,7 @@ export default function App() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   // Handle deep links while app is already in foreground/background
   useEffect(() => {
