@@ -62,6 +62,31 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleExportMarkdown = async () => {
+    try {
+      const activeNotesSorted = notes
+        .filter(n => !n.archived)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const md = activeNotesSorted.map(n => {
+        const lines: string[] = [];
+        lines.push(`## ${n.title}`);
+        if (n.url) lines.push(`🔗 ${n.url}`);
+        if (n.tags.length > 0) lines.push(n.tags.map(t => `#${t}`).join(' '));
+        lines.push('');
+        lines.push(n.content);
+        lines.push(`\n_Saved: ${new Date(n.createdAt).toLocaleDateString()}_`);
+        return lines.join('\n');
+      }).join('\n\n---\n\n');
+      await Clipboard.setStringAsync(md || '# No notes');
+      Alert.alert(
+        'Exported',
+        `${activeNotesSorted.length} ${activeNotesSorted.length === 1 ? 'note was' : 'notes were'} copied to the clipboard as Markdown.`
+      );
+    } catch {
+      Alert.alert('Export Failed', 'Forward could not copy your notes to the clipboard.');
+    }
+  };
+
   const ThemeButton = ({ value, label, icon }: { value: string; label: string; icon: string }) => (
     <TouchableOpacity
       style={[
@@ -230,6 +255,14 @@ export default function SettingsScreen() {
             accessibilityLabel="Export notes as JSON"
           >
             <Text style={[styles.exportBtnText, { color: colors.accent }]}>📋 Export Notes as JSON</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.exportBtn, { borderColor: colors.accent + '44', marginTop: 10 }]}
+            onPress={handleExportMarkdown}
+            accessibilityRole="button"
+            accessibilityLabel="Export notes as Markdown"
+          >
+            <Text style={[styles.exportBtnText, { color: colors.accent }]}>📝 Export Notes as Markdown</Text>
           </TouchableOpacity>
         </View>
 

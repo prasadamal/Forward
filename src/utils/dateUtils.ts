@@ -3,6 +3,9 @@ export function formatRelativeDate(isoDate: string): string {
   const date = new Date(isoDate);
   const diff = now.getTime() - date.getTime();
 
+  // Handle future dates or invalid timestamps gracefully
+  if (isNaN(diff) || diff < 0) return 'just now';
+
   const seconds = Math.floor(diff / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);

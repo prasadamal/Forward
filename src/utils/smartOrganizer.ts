@@ -151,12 +151,19 @@ export function detectPlatform(url: string): Platform {
   return 'manual';
 }
 
-// More precise URL regex that excludes trailing punctuation
-const URL_REGEX = /(https?:\/\/[^\s]+?)(?=[.,;:!?)\]}\s]|$)/g;
+// Greedily match a URL then strip any trailing sentence-ending punctuation.
+// Using a greedy match ensures dots within the domain and path (e.g. youtu.be)
+// are included; we only strip punctuation that appears at the very end.
+const URL_REGEX = /https?:\/\/[^\s]+/g;
+
+function stripTrailingPunctuation(url: string): string {
+  return url.replace(/[.,;:!?)\]}>'"]+$/, '');
+}
 
 export function extractUrl(text: string): string | undefined {
   const matches = text.match(URL_REGEX);
-  return matches ? matches[0] : undefined;
+  if (!matches) return undefined;
+  return stripTrailingPunctuation(matches[0]);
 }
 
 export function extractTitle(content: string, platform?: Platform): string {

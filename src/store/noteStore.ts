@@ -53,6 +53,10 @@ function normalizeDefaultSort(value: unknown): AppSettings['defaultSort'] {
   return value === 'oldest' || value === 'az' || value === 'newest' ? value : 'newest';
 }
 
+function normalizeTheme(value: unknown): AppSettings['theme'] {
+  return value === 'light' || value === 'dark' || value === 'system' ? value : 'dark';
+}
+
 interface NoteStore {
   notes: Note[];
   folders: SmartFolder[];
@@ -104,7 +108,7 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
           notes: notes || [],
           folders: folders || buildSystemFolders(),
           settings: {
-            theme: storedSettings.theme || 'dark',
+            theme: normalizeTheme(storedSettings.theme),
             defaultSort: normalizeDefaultSort(storedSettings.defaultSort),
             recentSearches: storedSettings.recentSearches || [],
           },
@@ -191,6 +195,7 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
 
   editNote: async (id, updates) => {
     const state = get();
+    if (!state.notes.some(n => n.id === id)) return;
     const updatedNotes = state.notes.map(n =>
       n.id === id ? { ...n, ...updates, updatedAt: new Date().toISOString() } : n
     );
@@ -299,6 +304,7 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
   archiveNote: async (id) => {
     const state = get();
     const note = state.notes.find(n => n.id === id);
+    if (!note) return;
     const updatedNotes = state.notes.map(n =>
       n.id === id ? { ...n, archived: true, pinned: false, archivedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } : n
     );

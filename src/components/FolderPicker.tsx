@@ -20,7 +20,7 @@ export default function FolderPicker({ visible, folders, selectedIds, onToggle, 
   const userFolders = folders.filter(f => !f.isSystem);
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
       <View style={styles.overlay}>
         <SafeAreaView style={[styles.sheet, { backgroundColor: colors.surface }]}>
           <View style={[styles.handle, { backgroundColor: colors.border }]} />
