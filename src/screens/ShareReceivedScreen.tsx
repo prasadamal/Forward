@@ -196,7 +196,7 @@ export default function ShareReceivedScreen() {
         {duplicate && (
           <View style={[styles.duplicateBox, { backgroundColor: colors.warning + '22', borderColor: colors.warning + '44' }]}>
             <Text style={[styles.duplicateText, { color: colors.warning }]}>
-              ⚠️ You already saved this URL. Tap "View Note" to see it.
+              ⚠️ You already saved this URL. Tap &quot;View Note&quot; to see it.
             </Text>
           </View>
         )}

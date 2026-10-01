@@ -286,7 +286,7 @@ export default function NoteDetailScreen() {
             </View>
           ) : (
             <Text style={[styles.noFolders, { color: colors.textMuted }]}>
-              No custom folders. Tap "Manage" to add to folders.
+              No custom folders. Tap &quot;Manage&quot; to add to folders.
             </Text>
           )}
         </View>

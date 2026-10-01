@@ -100,7 +100,7 @@ export default function SearchScreen() {
         <View style={styles.hintContainer}>
           <Text style={styles.hintIcon}>🫙</Text>
           <Text style={[styles.hintText, { color: colors.textSecondary }]}>
-            No notes found for "{query}"
+            No notes found for &quot;{query}&quot;
           </Text>
         </View>
       ) : (

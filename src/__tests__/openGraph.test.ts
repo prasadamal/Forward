@@ -101,4 +101,33 @@ describe('fetchOpenGraph', () => {
     const result = await fetchOpenGraph('https://example.com');
     expect(result.title).toBe('\u201CQuoted\u201D');
   });
+
+  it('passes an abort signal and clears the timeout after a failed request', async () => {
+    jest.useFakeTimers();
+    try {
+      mockFetch.mockRejectedValueOnce(new Error('offline'));
+      const clearSpy = jest.spyOn(global, 'clearTimeout');
+      await fetchOpenGraph('https://example.com');
+      expect(clearSpy).toHaveBeenCalled();
+      expect(mockFetch.mock.calls[0][1].signal).toBeDefined();
+      expect(jest.getTimerCount()).toBe(0);
+      clearSpy.mockRestore();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('reads og:image and falls back to the page URL when og:url is missing', async () => {
+    const html = `<html><head><meta property="og:image" content="https://img.example/a.png" /></head></html>`;
+    mockFetch.mockResolvedValueOnce({ text: async () => html });
+    const result = await fetchOpenGraph('https://example.com/p');
+    expect(result.image).toBe('https://img.example/a.png');
+    expect(result.url).toBe('https://example.com/p');
+  });
+
+  it('matches meta tags whose content attribute comes first', async () => {
+    const html = `<html><head><meta content="Reversed" property="og:title" /></head></html>`;
+    mockFetch.mockResolvedValueOnce({ text: async () => html });
+    expect((await fetchOpenGraph('https://example.com')).title).toBe('Reversed');
+  });
 });
