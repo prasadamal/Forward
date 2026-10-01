@@ -30,6 +30,20 @@ describe('extractUrl', () => {
     expect(extractUrl('https://first.com and https://second.com')).toBe('https://first.com');
   });
 
+  it('keeps balanced parentheses that are part of the URL', () => {
+    expect(extractUrl('see https://en.wikipedia.org/wiki/Foo_(bar) now')).toBe(
+      'https://en.wikipedia.org/wiki/Foo_(bar)'
+    );
+    expect(extractUrl('(see https://en.wikipedia.org/wiki/Foo_(bar))')).toBe(
+      'https://en.wikipedia.org/wiki/Foo_(bar)'
+    );
+  });
+
+  it('strips several trailing punctuation characters', () => {
+    expect(extractUrl('wow https://example.com/a?!')).toBe('https://example.com/a');
+    expect(extractUrl('"https://example.com/a".')).toBe('https://example.com/a');
+  });
+
   it('returns undefined for non-URL input', () => {
     expect(extractUrl('no link here')).toBeUndefined();
     expect(extractUrl('')).toBeUndefined();
@@ -60,6 +74,21 @@ describe('detectPlatform', () => {
     expect(detectPlatform('http://blog.example.org/post')).toBe('web');
   });
 
+  it('matches on hostname only, not substrings of other domains', () => {
+    expect(detectPlatform('https://www.dropbox.com/s/abc')).toBe('web');
+    expect(detectPlatform('https://max.com/show')).toBe('web');
+    expect(detectPlatform('https://example.com/?next=youtube.com')).toBe('web');
+    expect(detectPlatform('https://notyoutube.com/')).toBe('web');
+  });
+
+  it('matches subdomains and short links', () => {
+    expect(detectPlatform('https://m.youtube.com/watch?v=abc')).toBe('youtube');
+    expect(detectPlatform('https://mobile.twitter.com/u/status/1')).toBe('twitter');
+    expect(detectPlatform('https://old.reddit.com/r/x')).toBe('reddit');
+    expect(detectPlatform('https://redd.it/abc')).toBe('reddit');
+    expect(detectPlatform('HTTPS://WWW.INSTAGRAM.COM/p/abc')).toBe('instagram');
+  });
+
   it('returns manual for non-http strings', () => {
     expect(detectPlatform('some plain text')).toBe('manual');
   });
@@ -81,6 +110,10 @@ describe('extractTitle', () => {
   it('truncates long text to 60 characters', () => {
     const long = 'A'.repeat(80);
     expect(extractTitle(long, 'manual').length).toBeLessThanOrEqual(60);
+  });
+
+  it('collapses newlines and repeated whitespace in the title', () => {
+    expect(extractTitle('Line one\n\nline   two https://example.com', 'web')).toBe('Line one line two');
   });
 
   it('returns "Note" when content is only whitespace', () => {
@@ -118,6 +151,34 @@ describe('extractTags', () => {
     const text = 'food restaurant cafe eat dining cuisine recipe pizza sushi burger pasta curry bar pub brewery brunch lunch dinner';
     const { tags } = extractTags(text);
     expect(tags.length).toBeLessThanOrEqual(10);
+  });
+
+  it('does not match keywords inside other words', () => {
+    // "chrome" contains "rome", "diagram" contains "goa", "Barcelona" contains "bar"
+    expect(extractTags('I love chrome and programs').folders).not.toContain('Rome');
+    expect(extractTags('The goal of my diagram').folders).toEqual([]);
+    const { folders } = extractTags('Barcelona');
+    expect(folders).toContain('Barcelona');
+    expect(folders).not.toContain('Food');
+    expect(extractTags('Start the project partner already').folders).not.toContain('Entertainment');
+  });
+
+  it('still matches simple plurals and multi-word terms', () => {
+    expect(extractTags('best restaurants around').folders).toContain('Food');
+    expect(extractTags('Trip to New York next week').folders).toContain('New York');
+  });
+
+  it('maps location aliases onto one folder', () => {
+    expect(extractTags('Bengaluru cafe').folders).toContain('Bangalore');
+    expect(extractTags('Bengaluru cafe').folders).not.toContain('Bengaluru');
+    expect(extractTags('Calcutta walk').folders).toContain('Kolkata');
+    expect(extractTags('New Delhi trip').folders).toContain('Delhi');
+    expect(extractTags('Bangalore and Bengaluru').folders.filter(f => f === 'Bangalore')).toHaveLength(1);
+  });
+
+  it('is case-insensitive and ignores punctuation around words', () => {
+    expect(extractTags('PIZZA!').folders).toContain('Food');
+    expect(extractTags('(goa)').folders).toContain('Goa');
   });
 
   it('does not duplicate folders', () => {
