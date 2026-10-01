@@ -5,23 +5,13 @@ import { StatusBar } from 'expo-status-bar';
 import { useNoteStore } from './src/store/noteStore';
 import AppNavigator from './src/navigation/AppNavigator';
 import { navigationRef } from './src/navigation/navigationRef';
+import { isShareLink, parseShareLink } from './src/utils/deepLink';
 
 function navigateToShare(url: string) {
-  // Parse forward://share?text=…&mode=…
   try {
-    const withoutScheme = url.replace('forward://share', '');
-    const params = new URLSearchParams(withoutScheme.replace(/^\?/, ''));
-    const rawText = params.get('text') || '';
-    let text = '';
-    try {
-      text = decodeURIComponent(rawText);
-    } catch (error) {
-      console.error('[App] Failed to decode shared text from deep link', error);
-      text = rawText;
-    }
-    const mode = (params.get('mode') === 'auto' ? 'auto' : 'picker') as 'auto' | 'picker';
-    if (text && navigationRef.isReady()) {
-      navigationRef.navigate('ShareReceived', { sharedText: text, mode });
+    const link = parseShareLink(url);
+    if (link && navigationRef.isReady()) {
+      navigationRef.navigate('ShareReceived', { sharedText: link.text, mode: link.mode });
     }
   } catch (error) {
     console.error('[App] Failed to process deep link', error);
@@ -43,7 +33,7 @@ export default function App() {
   // Handle deep links while app is already in foreground/background
   useEffect(() => {
     const sub = Linking.addEventListener('url', ({ url }) => {
-      if (url.startsWith('forward://share')) {
+      if (isShareLink(url)) {
         navigateToShare(url);
       }
     });
@@ -87,7 +77,7 @@ export default function App() {
         // Using onReady guarantees the navigator is fully mounted before we try
         // to navigate, so navigationRef.isReady() will always be true here.
         Linking.getInitialURL().then(url => {
-          if (url && url.startsWith('forward://share')) {
+          if (isShareLink(url)) {
             navigateToShare(url);
           }
         });
