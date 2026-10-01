@@ -72,10 +72,10 @@ export async function fetchOpenGraph(url: string, timeoutMs = 5000): Promise<OGM
     return {};
   }
 
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
+  try {
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
@@ -83,7 +83,6 @@ export async function fetchOpenGraph(url: string, timeoutMs = 5000): Promise<OGM
         Accept: 'text/html',
       },
     });
-    clearTimeout(timer);
 
     const html = await res.text();
 
@@ -108,5 +107,9 @@ export async function fetchOpenGraph(url: string, timeoutMs = 5000): Promise<OGM
   } catch (error) {
     console.error('[openGraph] Failed to fetch metadata for', url, error);
     return {};
+  } finally {
+    // Always clear the timer (also on network errors) so it cannot keep the
+    // JS runtime / test worker alive after the request has failed.
+    clearTimeout(timer);
   }
 }
