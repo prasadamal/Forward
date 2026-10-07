@@ -27,7 +27,9 @@ export default function TabNavigator() {
         tabBarActiveTintColor: c.accent,
         tabBarInactiveTintColor: c.textMuted,
         tabBarStyle: { backgroundColor: c.tabBar, borderTopColor: c.border },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        // flexShrink: 0 is the native default; without it react-native-web squeezes the
+        // label and clips descenders ("Settings").
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', flexShrink: 0 },
         tabBarIcon: ({ focused, color }) => {
           const [on, off] = ICONS[route.name];
           return <Ionicons name={focused ? on : off} size={22} color={color} />;
