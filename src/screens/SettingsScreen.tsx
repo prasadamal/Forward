@@ -1,377 +1,235 @@
-import React from 'react';
-import {
-  View, Text, StyleSheet, SafeAreaView, StatusBar,
-  TouchableOpacity, Alert, ScrollView,
-} from 'react-native';
-import * as Clipboard from 'expo-clipboard';
-import { useNoteStore } from '../store/noteStore';
-import { useTheme } from '../hooks/useTheme';
-import { PLATFORM_COLORS } from '../constants/colors';
-import { Platform as PlatformType } from '../types';
+import React, { useEffect, useState } from 'react';
+import { Alert, View } from 'react-native';
+import Constants from 'expo-constants';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
+import { useVault } from '../store/vault';
+import { usePrefs } from '../store/prefs';
+import { getSession, hasSession } from '../store/session';
+import { biometricLabel, BiometricSupport, getBiometricSupport } from '../security/biometrics';
+import { applyScreenCapturePolicy } from '../security/privacy';
+import { formatBytes } from '../utils/encoding';
+import { ThemePreference } from '../types';
+import { space, useTheme } from '../theme';
+import { Header, ListRow, Screen, Scroll, Section, Txt } from '../ui/primitives';
+import { ChoiceSheet } from '../ui/ChoiceSheet';
+import { toast } from '../ui/Toast';
 
-const PLATFORM_STATS: { key: PlatformType; label: string; color: string }[] = [
-  { key: 'youtube', label: 'YouTube', color: PLATFORM_COLORS.youtube },
-  { key: 'instagram', label: 'Instagram', color: PLATFORM_COLORS.instagram },
-  { key: 'twitter', label: 'Twitter', color: PLATFORM_COLORS.twitter },
-  { key: 'reddit', label: 'Reddit', color: PLATFORM_COLORS.reddit },
-  { key: 'web', label: 'Web', color: PLATFORM_COLORS.web },
-  { key: 'manual', label: 'Manual', color: PLATFORM_COLORS.manual },
+type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+const AUTO_LOCK = [
+  { value: 0, label: 'Immediately' },
+  { value: 30, label: 'After 30 seconds' },
+  { value: 60, label: 'After 1 minute' },
+  { value: 300, label: 'After 5 minutes' },
+  { value: 900, label: 'After 15 minutes' },
+];
+const CLIPBOARD = [
+  { value: 30, label: 'After 30 seconds' },
+  { value: 45, label: 'After 45 seconds' },
+  { value: 90, label: 'After 90 seconds' },
+  { value: 0, label: 'Never' },
+];
+const THEMES: { value: ThemePreference; label: string }[] = [
+  { value: 'system', label: 'Match phone' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'light', label: 'Light' },
 ];
 
 export default function SettingsScreen() {
-  const { notes, folders, settings, updateSettings, clearAllData } = useNoteStore();
-  const { colors } = useTheme();
+  const { c } = useTheme();
+  const nav = useNavigation<Nav>();
+  const settings = useVault(s => s.settings);
+  const keyringState = useVault(s => s.keyringState);
+  const items = useVault(s => s.items);
+  const folders = useVault(s => s.folders);
+  const updateSettings = useVault(s => s.updateSettings);
+  const setBiometrics = useVault(s => s.setBiometrics);
+  const lock = useVault(s => s.lock);
+  const eraseVault = useVault(s => s.eraseVault);
+  const emptyTrash = useVault(s => s.emptyTrash);
+  const theme = usePrefs(s => s.theme);
+  const setTheme = usePrefs(s => s.setTheme);
+  const [support, setSupport] = useState<BiometricSupport | null>(null);
+  const [sheet, setSheet] = useState<'lock' | 'clipboard' | 'theme' | null>(null);
+  const [bytes, setBytes] = useState<number | null>(null);
 
-  const handleClearAll = () => {
-    Alert.alert(
-      'Clear All Data',
-      'This will permanently delete all notes and folders, and reset saved settings to their defaults on this device.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear All', style: 'destructive',
-          onPress: async () => {
-            await clearAllData();
-            Alert.alert('Done', 'All Forward data has been cleared from this device.');
-          },
-        },
-      ]
-    );
+  useEffect(() => {
+    getBiometricSupport().then(setSupport);
+    if (!hasSession()) return;
+    getSession()
+      .repo.stats()
+      .then(s => setBytes(s.bytes))
+      .catch(() => undefined);
+  }, [items.length]);
+
+  const bioName = biometricLabel(support?.kind ?? 'none');
+  const trashed = items.filter(i => i.trashedAt).length;
+
+  const toggleBio = async (on: boolean) => {
+    const ok = await setBiometrics(on);
+    if (on && !ok) Alert.alert(`Couldn’t turn on ${bioName}`, `Check that ${bioName} is set up in your phone’s settings.`);
+    else toast(on ? `${bioName} unlock on` : `${bioName} unlock off`);
   };
 
-  const userFolders = folders.filter(f => !f.isSystem);
-  const activeNotes = notes.filter(n => !n.archived);
-  const archivedCount = notes.filter(n => n.archived).length;
-
-  const platformCounts = activeNotes.reduce<Record<string, number>>((acc, n) => {
-    const p = n.platform || 'manual';
-    acc[p] = (acc[p] || 0) + 1;
-    return acc;
-  }, {});
-
-  const handleExportNotes = async () => {
-    try {
-      const json = JSON.stringify(notes, null, 2);
-      await Clipboard.setStringAsync(json);
-      Alert.alert(
-        'Exported',
-        `${notes.length} ${notes.length === 1 ? 'note was' : 'notes were'} copied to the clipboard as JSON.`
-      );
-    } catch {
-      Alert.alert('Export Failed', 'Forward could not copy your notes to the clipboard.');
-    }
-  };
-
-  const handleExportMarkdown = async () => {
-    try {
-      const activeNotesSorted = notes
-        .filter(n => !n.archived)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      const md = activeNotesSorted.map(n => {
-        const lines: string[] = [];
-        lines.push(`## ${n.title}`);
-        if (n.url) lines.push(`🔗 ${n.url}`);
-        if (n.tags.length > 0) lines.push(n.tags.map(t => `#${t}`).join(' '));
-        lines.push('');
-        lines.push(n.content);
-        lines.push(`\n_Saved: ${new Date(n.createdAt).toLocaleDateString()}_`);
-        return lines.join('\n');
-      }).join('\n\n---\n\n');
-      await Clipboard.setStringAsync(md || '# No notes');
-      Alert.alert(
-        'Exported',
-        `${activeNotesSorted.length} ${activeNotesSorted.length === 1 ? 'note was' : 'notes were'} copied to the clipboard as Markdown.`
-      );
-    } catch {
-      Alert.alert('Export Failed', 'Forward could not copy your notes to the clipboard.');
-    }
-  };
-
-  const ThemeButton = ({ value, label, icon }: { value: string; label: string; icon: string }) => (
-    <TouchableOpacity
-      style={[
-        styles.themeBtn,
-        {
-          backgroundColor: settings.theme === value ? colors.accent : colors.card,
-          borderColor: settings.theme === value ? colors.accent : colors.border,
-        },
-      ]}
-      onPress={() => updateSettings({ theme: value as 'light' | 'dark' | 'system' })}
-      accessibilityRole="button"
-      accessibilityLabel={`Use ${label} theme`}
-    >
-      <Text style={styles.themeBtnIcon}>{icon}</Text>
-      <Text style={[styles.themeBtnLabel, { color: settings.theme === value ? '#FFFFFF' : colors.textSecondary }]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  const SortButton = ({ value, label }: { value: string; label: string }) => (
-    <TouchableOpacity
-      style={[
-        styles.sortBtn,
-        {
-          backgroundColor: settings.defaultSort === value ? colors.accent : colors.card,
-          borderColor: settings.defaultSort === value ? colors.accent : colors.border,
-        },
-      ]}
-      onPress={() => updateSettings({ defaultSort: value as 'newest' | 'oldest' | 'az' })}
-      accessibilityRole="button"
-      accessibilityLabel={`Sort notes by ${label}`}
-    >
-      <Text style={[styles.sortBtnLabel, { color: settings.defaultSort === value ? '#FFFFFF' : colors.textSecondary }]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
+  const erase = () =>
+    Alert.alert('Erase everything?', 'All items, folders, cards and passwords on this phone will be permanently deleted. Make a backup first if you might need them.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Erase',
+        style: 'destructive',
+        onPress: () =>
+          Alert.alert('Are you sure?', 'This can’t be undone.', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Erase vault', style: 'destructive', onPress: () => void eraseVault() },
+          ]),
+      },
+    ]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar
-        barStyle={colors.text === '#FFFFFF' ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.background}
+    <Screen>
+      <Scroll contentStyle={{ paddingHorizontal: 0 }}>
+        <Header title="Settings" large />
+        <View style={{ paddingHorizontal: space.lg }}>
+          <Section title="Security">
+            {support?.available ? (
+              <ListRow
+                title={`Unlock with ${bioName}`}
+                icon={support.kind === 'face' ? 'happy-outline' : 'finger-print'}
+                switchValue={!!keyringState?.biometrics}
+                onSwitch={v => void toggleBio(v)}
+              />
+            ) : null}
+            <ListRow
+              title="Auto-lock"
+              icon="timer-outline"
+              value={AUTO_LOCK.find(o => o.value === settings.autoLockSeconds)?.label ?? `${settings.autoLockSeconds}s`}
+              chevron
+              onPress={() => setSheet('lock')}
+            />
+            <ListRow
+              title="Confirm before showing secrets"
+              subtitle="Card numbers, CVVs and passwords"
+              icon="eye-off-outline"
+              switchValue={settings.revealNeedsAuth}
+              onSwitch={v => void updateSettings({ revealNeedsAuth: v })}
+            />
+            <ListRow
+              title="Block screenshots"
+              subtitle="Also hides Forward in the app switcher"
+              icon="phone-portrait-outline"
+              switchValue={settings.blockScreenshots}
+              onSwitch={async v => {
+                await updateSettings({ blockScreenshots: v });
+                await applyScreenCapturePolicy(v);
+              }}
+            />
+            <ListRow
+              title="Clear copied secrets"
+              icon="clipboard-outline"
+              value={CLIPBOARD.find(o => o.value === settings.clipboardClearSeconds)?.label ?? `${settings.clipboardClearSeconds}s`}
+              chevron
+              onPress={() => setSheet('clipboard')}
+            />
+            <ListRow title="Change passcode" icon="keypad-outline" chevron onPress={() => nav.navigate('ChangePasscode')} />
+            <ListRow title="Lock now" icon="lock-closed-outline" last onPress={() => void lock()} />
+          </Section>
+
+          <Section
+            title="Sorting"
+            footer="Link details come straight from the site you shared (for example YouTube’s own oEmbed service). Forward has no servers and never sees your data. Turn previews off to keep everything offline."
+          >
+            <ListRow
+              title="Sort automatically"
+              subtitle="Places & topics, e.g. Bangalore › Food"
+              icon="sparkles-outline"
+              switchValue={settings.autoFile}
+              onSwitch={v => void updateSettings({ autoFile: v })}
+            />
+            <ListRow
+              title="Link previews"
+              subtitle="Fetch titles & thumbnails to sort links better"
+              icon="globe-outline"
+              switchValue={settings.linkPreviews}
+              onSwitch={v => void updateSettings({ linkPreviews: v })}
+              last
+            />
+          </Section>
+
+          <Section title="Backup" footer="Backups are a single encrypted file you keep wherever you like. Use one to move to a new phone.">
+            <ListRow title="Back up or restore" icon="cloud-download-outline" chevron last onPress={() => nav.navigate('Backup')} />
+          </Section>
+
+          <Section title="Appearance">
+            <ListRow
+              title="Theme"
+              icon="contrast-outline"
+              value={THEMES.find(t => t.value === theme)?.label}
+              chevron
+              last
+              onPress={() => setSheet('theme')}
+            />
+          </Section>
+
+          <Section title="Your vault">
+            <ListRow title="Items" icon="albums-outline" value={String(items.filter(i => !i.trashedAt).length)} />
+            <ListRow title="Folders" icon="folder-outline" value={String(folders.length)} />
+            <ListRow title="Stored files" icon="server-outline" value={bytes === null ? '…' : formatBytes(bytes)} />
+            <ListRow
+              title="Empty Trash"
+              icon="trash-outline"
+              value={String(trashed)}
+              last
+              onPress={() =>
+                trashed
+                  ? Alert.alert('Empty Trash?', `${trashed} ${trashed === 1 ? 'item' : 'items'} will be deleted permanently.`, [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Delete', style: 'destructive', onPress: () => void emptyTrash() },
+                    ])
+                  : toast('Trash is already empty')
+              }
+            />
+          </Section>
+
+          <Section title="About">
+            <ListRow title="Privacy & security" icon="shield-checkmark-outline" chevron onPress={() => nav.navigate('Privacy')} />
+            <ListRow title="Version" icon="information-circle-outline" value={Constants.expoConfig?.version ?? '—'} last />
+          </Section>
+
+          <Section>
+            <ListRow title="Erase vault" icon="nuclear-outline" destructive last onPress={erase} />
+          </Section>
+          <Txt variant="small" color={c.textMuted} style={{ textAlign: 'center' }}>
+            No account. No cloud. No tracking.
+          </Txt>
+        </View>
+      </Scroll>
+
+      <ChoiceSheet
+        visible={sheet === 'lock'}
+        title="Auto-lock"
+        choices={AUTO_LOCK}
+        value={settings.autoLockSeconds}
+        onChoose={v => void updateSettings({ autoLockSeconds: v })}
+        onClose={() => setSheet(null)}
       />
-
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
-
-        {/* Theme */}
-        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>APPEARANCE</Text>
-          <View style={styles.themeRow}>
-            <ThemeButton value="light" label="Light" icon="☀️" />
-            <ThemeButton value="dark" label="Dark" icon="🌙" />
-            <ThemeButton value="system" label="System" icon="📱" />
-          </View>
-        </View>
-
-        {/* Default Sort */}
-        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>DEFAULT SORT</Text>
-          <View style={styles.sortRow}>
-            <SortButton value="newest" label="Newest" />
-            <SortButton value="oldest" label="Oldest" />
-            <SortButton value="az" label="A–Z" />
-          </View>
-        </View>
-
-        {/* Stats */}
-        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>YOUR DATA</Text>
-          <View style={styles.statsRow}>
-            <View style={styles.stat}>
-              <Text style={[styles.statNumber, { color: colors.accent }]}>{notes.filter(n => !n.archived).length}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total</Text>
-            </View>
-            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.stat}>
-              <Text style={[styles.statNumber, { color: colors.secondary }]}>{userFolders.length}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Folders</Text>
-            </View>
-            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.stat}>
-              <Text style={[styles.statNumber, { color: colors.success }]}>
-                {notes.filter(n => n.pinned && !n.archived).length}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Pinned</Text>
-            </View>
-            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.stat}>
-              <Text style={[styles.statNumber, { color: colors.warning }]}>{archivedCount}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Archived</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Notes by Platform with progress bars */}
-        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>NOTES BY PLATFORM</Text>
-          {PLATFORM_STATS.map(p => {
-            const count = platformCounts[p.key] || 0;
-            const pct = activeNotes.length > 0 ? count / activeNotes.length : 0;
-            return (
-              <View key={p.key} style={styles.platformRow}>
-                <View style={[styles.platformDot, { backgroundColor: p.color }]} />
-                <Text style={[styles.platformLabel, { color: colors.textSecondary }]}>{p.label}</Text>
-                <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
-                  <View
-                    style={[
-                      styles.progressBar,
-                      { backgroundColor: p.color, width: `${Math.round(pct * 100)}%` },
-                    ]}
-                  />
-                </View>
-                <Text style={[styles.platformCount, { color: colors.text }]}>{count}</Text>
-              </View>
-            );
-          })}
-        </View>
-
-        {/* About */}
-        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ABOUT</Text>
-          <View style={styles.aboutRow}>
-            <Text style={styles.appEmoji}>✉️</Text>
-            <View>
-              <Text style={[styles.appName, { color: colors.text }]}>Forward</Text>
-              <Text style={[styles.appDesc, { color: colors.textSecondary }]}>
-                Smart notes, auto-organized
-              </Text>
-              <Text style={[styles.version, { color: colors.textMuted }]}>Version 1.0.0</Text>
-            </View>
-          </View>
-          <Text style={[styles.aboutText, { color: colors.textSecondary }]}>
-            Forward automatically organizes content shared from YouTube, Instagram, Twitter and anywhere
-            else into smart folders based on locations, topics, and themes.
-          </Text>
-        </View>
-
-        {/* How to use */}
-        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>HOW TO USE</Text>
-          {[
-            { icon: '📤', tip: 'Share any link from any app to Forward' },
-            { icon: '✨', tip: 'Smart folders auto-organize by location & topic' },
-            { icon: '🔍', tip: 'Search across all your notes instantly' },
-            { icon: '📌', tip: 'Long-press a note to pin/unpin it quickly' },
-            { icon: '🎨', tip: 'Pick a color accent when creating a new note' },
-            { icon: '📁', tip: 'Create custom folders to organize manually' },
-          ].map((item, i) => (
-            <View key={i} style={styles.tipRow}>
-              <Text style={styles.tipIcon}>{item.icon}</Text>
-              <Text style={[styles.tipText, { color: colors.textSecondary }]}>{item.tip}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Export */}
-        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>EXPORT</Text>
-          <TouchableOpacity
-            style={[styles.exportBtn, { borderColor: colors.accent + '44' }]}
-            onPress={handleExportNotes}
-            accessibilityRole="button"
-            accessibilityLabel="Export notes as JSON"
-          >
-            <Text style={[styles.exportBtnText, { color: colors.accent }]}>📋 Export Notes as JSON</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.exportBtn, { borderColor: colors.accent + '44', marginTop: 10 }]}
-            onPress={handleExportMarkdown}
-            accessibilityRole="button"
-            accessibilityLabel="Export notes as Markdown"
-          >
-            <Text style={[styles.exportBtnText, { color: colors.accent }]}>📝 Export Notes as Markdown</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Danger zone */}
-        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>DANGER ZONE</Text>
-          <TouchableOpacity
-            style={[styles.dangerBtn, { borderColor: colors.error + '44' }]}
-            onPress={handleClearAll}
-            accessibilityRole="button"
-            accessibilityLabel="Clear all app data"
-          >
-            <Text style={[styles.dangerBtnText, { color: colors.error }]}>🗑 Clear All Data</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      <ChoiceSheet
+        visible={sheet === 'clipboard'}
+        title="Clear copied secrets"
+        choices={CLIPBOARD}
+        value={settings.clipboardClearSeconds}
+        onChoose={v => void updateSettings({ clipboardClearSeconds: v })}
+        onClose={() => setSheet(null)}
+      />
+      <ChoiceSheet
+        visible={sheet === 'theme'}
+        title="Theme"
+        choices={THEMES}
+        value={theme}
+        onChoose={v => void setTheme(v)}
+        onClose={() => setSheet(null)}
+      />
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: { padding: 20, paddingBottom: 80 },
-  title: { fontSize: 28, fontWeight: '800', marginBottom: 20 },
-  section: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-  },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-    marginBottom: 14,
-  },
-  themeRow: { flexDirection: 'row', gap: 10 },
-  themeBtn: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 4,
-  },
-  themeBtnIcon: { fontSize: 22 },
-  themeBtnLabel: { fontSize: 13, fontWeight: '600' },
-  sortRow: { flexDirection: 'row', gap: 10 },
-  sortBtn: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  sortBtnLabel: { fontSize: 13, fontWeight: '600' },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  stat: { alignItems: 'center', flex: 1 },
-  statNumber: { fontSize: 24, fontWeight: '800' },
-  statLabel: { fontSize: 11, marginTop: 4 },
-  statDivider: { width: 1, height: 36 },
-  aboutRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 14 },
-  appEmoji: { fontSize: 44 },
-  appName: { fontSize: 20, fontWeight: '800' },
-  appDesc: { fontSize: 13, marginTop: 2 },
-  version: { fontSize: 12, marginTop: 4 },
-  aboutText: { fontSize: 14, lineHeight: 22 },
-  tipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
-  tipIcon: { fontSize: 20, width: 28 },
-  tipText: { flex: 1, fontSize: 14, lineHeight: 20 },
-  dangerBtn: {
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
-  dangerBtnText: { fontSize: 15, fontWeight: '600' },
-  exportBtn: {
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
-  exportBtnText: { fontSize: 15, fontWeight: '600' },
-  platformRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 10,
-  },
-  platformDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  platformLabel: { width: 72, fontSize: 13 },
-  progressTrack: {
-    flex: 1,
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: 6,
-    borderRadius: 3,
-  },
-  platformCount: { fontSize: 13, fontWeight: '700', width: 24, textAlign: 'right' },
-});

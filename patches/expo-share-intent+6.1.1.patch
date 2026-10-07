@@ -1,0 +1,43 @@
+diff --git a/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt b/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
+index 0153c89..61ee832 100644
+--- a/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
++++ b/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
+@@ -130,6 +130,7 @@ class ExpoShareIntentModule : Module() {
+                         "type" to "text",
+                         "meta" to mapOf(
+                             "title" to intent.getCharSequenceExtra(Intent.EXTRA_TITLE),
++                            "subject" to intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT)?.toString(),
+                         )
+                     ))
+                 } else if (intent.action == Intent.ACTION_VIEW) {
+@@ -142,14 +143,28 @@ class ExpoShareIntentModule : Module() {
+                 if (intent.action == Intent.ACTION_SEND) {
+                     val uri = intent.parcelable<Uri>(Intent.EXTRA_STREAM);
+                     if (uri != null) {
+-                        notifyShareIntent(mapOf( "files" to arrayOf(getFileInfo(uri), "type" to "file")))
++                        notifyShareIntent(mapOf(
++                            "files" to arrayOf(getFileInfo(uri)),
++                            "type" to "file",
++                            "text" to intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString(),
++                            "meta" to mapOf(
++                                "subject" to intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT)?.toString(),
++                            )
++                        ))
+                     } else {
+                         notifyError("empty uri for file sharing: " + intent.action)
+                     }
+                 } else if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
+                     val uris = intent.parcelableArrayList<Uri>(Intent.EXTRA_STREAM)
+                     if (uris != null) {
+-                        notifyShareIntent(mapOf( "files" to uris.map { getFileInfo(it) }, "type" to "file"))
++                        notifyShareIntent(mapOf(
++                            "files" to uris.map { getFileInfo(it) },
++                            "type" to "file",
++                            "text" to intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString(),
++                            "meta" to mapOf(
++                                "subject" to intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT)?.toString(),
++                            )
++                        ))
+                     } else {
+                         notifyError("empty uris array for file sharing: " + intent.action)
+                     }

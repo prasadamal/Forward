@@ -1,303 +1,216 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet,
-  SafeAreaView, StatusBar, RefreshControl,
-} from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNoteStore } from '../store/noteStore';
-import { useTheme } from '../hooks/useTheme';
-import { PLATFORM_COLORS } from '../constants/colors';
-import { RootStackParamList } from '../types';
-import NoteCard from '../components/NoteCard';
-import EmptyState from '../components/EmptyState';
+import { RootStackParamList, INBOX } from '../navigation/types';
+import { useVault } from '../store/vault';
+import { folderLabelFor, sortItems, useFolderCounts, useFolderTree, useLibraryItems } from '../store/selectors';
+import { childrenOf } from '../folders/tree';
+import { ItemType } from '../types';
+import { radius, space, useTheme } from '../theme';
+import { Banner, Chip, EmptyState, IconButton, Screen, Txt } from '../ui/primitives';
+import { ItemRow } from '../ui/items';
+import { FolderTile } from '../ui/folders';
+import { AddSheet } from '../ui/AddSheet';
 
-type NavProp = NativeStackNavigationProp<RootStackParamList>;
+type Nav = NativeStackNavigationProp<RootStackParamList>;
+type Filter = 'all' | Extract<ItemType, 'link' | 'image' | 'video' | 'note' | 'file'>;
 
-const FILTERS = [
-  { label: 'All', value: 'all' },
-  { label: 'YouTube', value: 'youtube' },
-  { label: 'Instagram', value: 'instagram' },
-  { label: 'Twitter', value: 'twitter' },
-  { label: 'Reddit', value: 'reddit' },
-  { label: 'Web', value: 'web' },
-  { label: 'Notes', value: 'manual' },
+const FILTERS: { key: Filter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'link', label: 'Links' },
+  { key: 'image', label: 'Images' },
+  { key: 'video', label: 'Videos' },
+  { key: 'note', label: 'Notes' },
+  { key: 'file', label: 'Files' },
 ];
-
-type SortOption = 'newest' | 'oldest' | 'az';
-
-const SORT_OPTIONS: { label: string; value: SortOption }[] = [
-  { label: 'Newest', value: 'newest' },
-  { label: 'Oldest', value: 'oldest' },
-  { label: 'A–Z', value: 'az' },
-];
-
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning ☀️';
-  if (hour < 18) return 'Good afternoon 🌤';
-  return 'Good evening 🌙';
-}
 
 export default function HomeScreen() {
-  const navigation = useNavigation<NavProp>();
-  const { notes, togglePin, settings, loadData } = useNoteStore();
-  const { colors } = useTheme();
+  const { c } = useTheme();
+  const nav = useNavigation<Nav>();
+  const items = useLibraryItems();
+  const tree = useFolderTree();
+  const counts = useFolderCounts();
+  const lock = useVault(s => s.lock);
+  const notice = useVault(s => s.notice);
+  const dismissNotice = useVault(s => s.dismissNotice);
+  const [filter, setFilter] = useState<Filter>('all');
+  const [addOpen, setAddOpen] = useState(false);
 
-  const [filter, setFilter] = useState('all');
-  const [sortBy, setSortBy] = useState<SortOption>(settings.defaultSort);
-  const [refreshing, setRefreshing] = useState(false);
+  const inboxCount = useMemo(() => items.filter(i => i.folderIds.length === 0).length, [items]);
+  const topFolders = useMemo(
+    () =>
+      [...childrenOf(tree, null)]
+        .sort((a, b) => (counts.total.get(b.id) ?? 0) - (counts.total.get(a.id) ?? 0) || a.name.localeCompare(b.name))
+        .slice(0, 12),
+    [tree, counts],
+  );
+  const visible = useMemo(() => sortItems(filter === 'all' ? items : items.filter(i => i.type === filter)), [items, filter]);
+  const typeCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const i of items) m.set(i.type, (m.get(i.type) ?? 0) + 1);
+    return m;
+  }, [items]);
 
-  const activeNotes = useMemo(() => notes.filter(n => !n.archived), [notes]);
-  const sorted = useMemo(() => {
-    const filtered = filter === 'all' ? activeNotes : activeNotes.filter(n => n.platform === filter);
-    return [...filtered].sort((a, b) => {
-      if (a.pinned && !b.pinned) return -1;
-      if (!a.pinned && b.pinned) return 1;
-      switch (sortBy) {
-        case 'oldest':
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        case 'az':
-          return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
-        default:
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      }
-    });
-  }, [activeNotes, filter, sortBy]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
-  }, [loadData]);
-
-  const filterColor = filter !== 'all' ? PLATFORM_COLORS[filter] : colors.accent;
-
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar
-        barStyle={colors.text === '#FFFFFF' ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.background}
-      />
-
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={[styles.greeting, { color: colors.textSecondary }]}>{getGreeting()}</Text>
-          <Text style={[styles.appName, { color: colors.text }]}>Forward</Text>
+  const header = (
+    <View>
+      <View style={styles.titleRow}>
+        <View style={{ flex: 1 }}>
+          <Txt variant="largeTitle">Forward</Txt>
+          <Txt variant="caption" color={c.textSecondary}>
+            {items.length} saved · encrypted on this phone
+          </Txt>
         </View>
-        <TouchableOpacity
-          style={[styles.addBtn, { backgroundColor: colors.accent }]}
-          onPress={() => navigation.navigate('AddNote', {})}
-        >
-          <Text style={styles.addBtnText}>+ New</Text>
-        </TouchableOpacity>
+        <IconButton name="search" label="Search" onPress={() => nav.navigate('Search')} />
+        <IconButton name="lock-closed-outline" label="Lock now" onPress={() => void lock()} />
       </View>
 
-      {/* Stats bar */}
-      <View style={[styles.statsBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <View style={styles.statItem}>
-          <Text style={[styles.statNum, { color: colors.accent }]}>{activeNotes.length}</Text>
-          <Text style={[styles.statLbl, { color: colors.textMuted }]}>saved</Text>
-        </View>
-        <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-        <View style={styles.statItem}>
-          <Text style={[styles.statNum, { color: colors.secondary }]}>
-            {notes.filter(n => n.pinned && !n.archived).length}
-          </Text>
-          <Text style={[styles.statLbl, { color: colors.textMuted }]}>pinned</Text>
-        </View>
-        <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-        <View style={styles.statItem}>
-          <Text style={[styles.statNum, { color: colors.warning }]}>
-            {notes.filter(n => n.archived).length}
-          </Text>
-          <Text style={[styles.statLbl, { color: colors.textMuted }]}>archived</Text>
-        </View>
-      </View>
+      <Pressable
+        onPress={() => nav.navigate('Search')}
+        style={[styles.searchStub, { backgroundColor: c.surfaceAlt }]}
+        accessibilityRole="search"
+        accessibilityLabel="Search everything"
+      >
+        <Ionicons name="search" size={17} color={c.textMuted} />
+        <Txt variant="body" color={c.textMuted}>
+          Search places, topics, notes…
+        </Txt>
+      </Pressable>
 
-      {/* Filter Chips */}
+      {notice ? (
+        <View style={styles.block}>
+          <Banner tone="success" icon="shield-checkmark" title="Upgraded to an encrypted vault" body={notice} onClose={dismissNotice} />
+        </View>
+      ) : null}
+
+      {inboxCount > 0 ? (
+        <View style={styles.block}>
+          <Banner
+            icon="file-tray-full-outline"
+            title={`${inboxCount} ${inboxCount === 1 ? 'item needs' : 'items need'} a folder`}
+            body="Forward couldn’t tell where these belong. Tap to sort them."
+            onPress={() => nav.navigate('Folder', { folderId: INBOX })}
+          />
+        </View>
+      ) : null}
+
+      {topFolders.length ? (
+        <>
+          <View style={styles.sectionHead}>
+            <Txt variant="h3">Folders</Txt>
+            <Pressable onPress={() => nav.navigate('Tabs', { screen: 'Folders' })} hitSlop={8} accessibilityRole="button">
+              <Txt variant="caption" color={c.accent}>
+                See all
+              </Txt>
+            </Pressable>
+          </View>
+          <FlatList
+            horizontal
+            data={topFolders}
+            keyExtractor={f => f.id}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: space.lg }}
+            renderItem={({ item: f }) => (
+              <FolderTile folder={f} count={counts.total.get(f.id) ?? 0} onPress={() => nav.navigate('Folder', { folderId: f.id })} />
+            )}
+          />
+        </>
+      ) : null}
+
+      <View style={styles.sectionHead}>
+        <Txt variant="h3">Recently forwarded</Txt>
+      </View>
       <FlatList
         horizontal
-        data={FILTERS}
-        keyExtractor={item => item.value}
-        contentContainerStyle={styles.filtersContainer}
+        data={FILTERS.filter(f => f.key === 'all' || typeCounts.get(f.key))}
+        keyExtractor={f => f.key}
         showsHorizontalScrollIndicator={false}
-        renderItem={({ item }) => {
-          const isActive = filter === item.value;
-          const chipColor = item.value !== 'all' ? PLATFORM_COLORS[item.value] : colors.accent;
-          return (
-            <TouchableOpacity
-              style={[
-                styles.chip,
-                {
-                  backgroundColor: isActive ? chipColor : colors.surface,
-                  borderColor: isActive ? chipColor : colors.border,
-                },
-              ]}
-              onPress={() => setFilter(item.value)}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  { color: isActive ? '#FFFFFF' : colors.textSecondary },
-                ]}
-              >
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        }}
+        contentContainerStyle={{ paddingHorizontal: space.lg, gap: space.sm, paddingBottom: space.md }}
+        renderItem={({ item: f }) => (
+          <Chip
+            label={f.label}
+            selected={filter === f.key}
+            count={f.key === 'all' ? undefined : typeCounts.get(f.key)}
+            onPress={() => setFilter(f.key)}
+          />
+        )}
       />
+    </View>
+  );
 
-      {/* Sort Row */}
-      <View style={styles.sortRow}>
-        {SORT_OPTIONS.map(opt => (
-          <TouchableOpacity
-            key={opt.value}
-            style={[
-              styles.sortChip,
-              {
-                backgroundColor: sortBy === opt.value ? filterColor + '22' : 'transparent',
-                borderColor: sortBy === opt.value ? filterColor : colors.border,
-              },
-            ]}
-            onPress={() => setSortBy(opt.value)}
-          >
-            <Text
-              style={[
-                styles.sortChipText,
-                { color: sortBy === opt.value ? filterColor : colors.textMuted },
-              ]}
-            >
-              {opt.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-        <Text style={[styles.resultCount, { color: colors.textMuted }]}>
-          {sorted.length} {sorted.length === 1 ? 'result' : 'results'}
-        </Text>
-      </View>
-
-      {/* Notes List */}
-      {sorted.length === 0 ? (
-        <EmptyState
-          icon="✉️"
-          title="Nothing forwarded yet"
-          description="Share any link, text, or thought from any app — Forward will smart-organize it for you."
-          actionLabel="Add Your First Note"
-          onAction={() => navigation.navigate('AddNote', {})}
-        />
-      ) : (
-        <FlatList
-          data={sorted}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.list}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.accent}
-            />
-          }
-          renderItem={({ item }) => (
-            <NoteCard
-              note={item}
-              onPress={() => navigation.navigate('NoteDetail', { noteId: item.id })}
-              onLongPress={() => togglePin(item.id)}
-            />
-          )}
-        />
-      )}
-
-      {/* FAB */}
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.accent, shadowColor: colors.accent }]}
-        onPress={() => navigation.navigate('AddNote', {})}
+  return (
+    <Screen>
+      <FlatList
+        data={visible}
+        keyExtractor={i => i.id}
+        ListHeaderComponent={header}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        renderItem={({ item }) => (
+          <View style={{ paddingHorizontal: space.lg }}>
+            <ItemRow item={item} folderLabel={folderLabelFor(tree, item)} onPress={() => nav.navigate('Item', { itemId: item.id })} />
+          </View>
+        )}
+        ListEmptyComponent={
+          <EmptyState
+            emoji="📮"
+            title={items.length ? 'Nothing here' : 'Nothing forwarded yet'}
+            body={
+              items.length
+                ? 'Try another filter.'
+                : 'In YouTube, Instagram, X, WhatsApp or Photos, tap Share and choose Forward. It’ll be saved and sorted here.'
+            }
+            action={items.length ? undefined : { label: 'Add something', icon: 'add', onPress: () => setAddOpen(true) }}
+          />
+        }
+      />
+      <Pressable
+        onPress={() => setAddOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel="Add"
+        style={({ pressed }) => [styles.fab, { backgroundColor: c.accent, opacity: pressed ? 0.85 : 1 }]}
       >
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
+        <Ionicons name="add" size={30} color={c.onAccent} />
+      </Pressable>
+      <AddSheet visible={addOpen} onClose={() => setAddOpen(false)} />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg, paddingTop: space.md },
+  searchStub: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginHorizontal: space.lg,
+    marginTop: space.lg,
+    height: 42,
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+  },
+  block: { paddingHorizontal: space.lg, marginTop: space.md },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingHorizontal: space.lg,
+    marginTop: space.xl,
+    marginBottom: space.md,
   },
-  greeting: { fontSize: 13, marginBottom: 2 },
-  appName: {
-    fontSize: 30,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  addBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 22,
-  },
-  addBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
-  statsBar: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-  },
-  statItem: { flex: 1, alignItems: 'center' },
-  statNum: { fontSize: 20, fontWeight: '800' },
-  statLbl: { fontSize: 11, marginTop: 2 },
-  statDivider: { width: 1, marginHorizontal: 8 },
-  filtersContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    gap: 8,
-  },
-  sortRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    gap: 8,
-  },
-  sortChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  sortChipText: { fontSize: 12, fontWeight: '500' },
-  resultCount: { marginLeft: 'auto', fontSize: 12 },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginRight: 4,
-  },
-  chipText: { fontSize: 13, fontWeight: '500' },
-  list: { paddingTop: 8, paddingBottom: 100 },
   fab: {
     position: 'absolute',
-    bottom: 90,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    right: space.xl,
+    bottom: space.xl,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 8,
-    shadowColor: '#7C6FE0',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
   },
-  fabIcon: { color: '#FFFFFF', fontSize: 28, fontWeight: '300', marginTop: -2 },
 });

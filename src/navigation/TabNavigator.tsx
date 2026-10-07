@@ -1,63 +1,45 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../hooks/useTheme';
-import { RootTabParamList } from '../types';
+import { useTheme } from '../theme';
+import { TabParamList } from './types';
 import HomeScreen from '../screens/HomeScreen';
 import FoldersScreen from '../screens/FoldersScreen';
-import SearchScreen from '../screens/SearchScreen';
+import WalletScreen from '../screens/WalletScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import { IconName } from '../ui/primitives';
 
-const Tab = createBottomTabNavigator<RootTabParamList>();
+const Tab = createBottomTabNavigator<TabParamList>();
 
-type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
-
-const TAB_ICONS: Record<string, { active: IoniconName; inactive: IoniconName }> = {
-  Home: { active: 'mail', inactive: 'mail-outline' },
-  Folders: { active: 'folder', inactive: 'folder-outline' },
-  Search: { active: 'search', inactive: 'search-outline' },
-  Settings: { active: 'settings', inactive: 'settings-outline' },
+const ICONS: Record<keyof TabParamList, [IconName, IconName]> = {
+  Home: ['paper-plane', 'paper-plane-outline'],
+  Folders: ['folder', 'folder-outline'],
+  Wallet: ['wallet', 'wallet-outline'],
+  Settings: ['settings', 'settings-outline'],
 };
 
 export default function TabNavigator() {
-  const { colors } = useTheme();
-
+  const { c } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.tabBar,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          paddingBottom: 6,
-          paddingTop: 8,
-          height: 64,
-        },
-        tabBarActiveTintColor: colors.tabBarActive,
-        tabBarInactiveTintColor: colors.tabBarInactive,
+        tabBarActiveTintColor: c.accent,
+        tabBarInactiveTintColor: c.textMuted,
+        tabBarStyle: { backgroundColor: c.tabBar, borderTopColor: c.border },
+        // flexShrink: 0 is the native default; without it react-native-web squeezes the
+        // label and clips descenders ("Settings").
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', flexShrink: 0 },
         tabBarIcon: ({ focused, color }) => {
-          const icons = TAB_ICONS[route.name];
-          if (!icons) return <Ionicons name="ellipse-outline" size={22} color={color} />;
-          return (
-            <Ionicons
-              name={focused ? icons.active : icons.inactive}
-              size={22}
-              color={color}
-            />
-          );
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-          marginTop: 2,
+          const [on, off] = ICONS[route.name];
+          return <Ionicons name={focused ? on : off} size={22} color={color} />;
         },
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Forward' }} />
-      <Tab.Screen name="Folders" component={FoldersScreen} options={{ tabBarLabel: 'Folders' }} />
-      <Tab.Screen name="Search" component={SearchScreen} options={{ tabBarLabel: 'Search' }} />
-      <Tab.Screen name="Settings" component={SettingsScreen} options={{ tabBarLabel: 'Settings' }} />
+      <Tab.Screen name="Folders" component={FoldersScreen} />
+      <Tab.Screen name="Wallet" component={WalletScreen} />
+      <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
 }
