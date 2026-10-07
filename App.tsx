@@ -1,100 +1,102 @@
-import React, { useEffect } from 'react';
-import { useColorScheme, Linking, View, ActivityIndicator, Alert } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { StatusBar } from 'expo-status-bar';
-import { useNoteStore } from './src/store/noteStore';
-import AppNavigator from './src/navigation/AppNavigator';
+import React, { useCallback, useEffect } from 'react';
+import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useVault } from './src/store/vault';
+import { usePrefs } from './src/store/prefs';
+import { useShareIntake } from './src/share/useShareIntake';
+import { useAutoLock } from './src/security/autoLock';
+import { applyScreenCapturePolicy, enableAppSwitcherPrivacy } from './src/security/privacy';
+import { flushClipboard } from './src/security/clipboard';
 import { navigationRef } from './src/navigation/navigationRef';
+import AppNavigator from './src/navigation/AppNavigator';
+import OnboardingScreen from './src/screens/OnboardingScreen';
+import LockScreen from './src/screens/LockScreen';
+import { BootScreen, FailedScreen, OrphanedScreen } from './src/screens/GateScreens';
+import { ToastHost } from './src/ui/Toast';
+import { useTheme } from './src/theme';
+import { IncomingShare } from './src/types';
 
-function navigateToShare(url: string) {
-  // Parse forward://share?text=…&mode=…
-  try {
-    const withoutScheme = url.replace('forward://share', '');
-    const params = new URLSearchParams(withoutScheme.replace(/^\?/, ''));
-    const rawText = params.get('text') || '';
-    let text = '';
-    try {
-      text = decodeURIComponent(rawText);
-    } catch (error) {
-      console.error('[App] Failed to decode shared text from deep link', error);
-      text = rawText;
-    }
-    const mode = (params.get('mode') === 'auto' ? 'auto' : 'picker') as 'auto' | 'picker';
-    if (text && navigationRef.isReady()) {
-      navigationRef.navigate('ShareReceived', { sharedText: text, mode });
-    }
-  } catch (error) {
-    console.error('[App] Failed to process deep link', error);
-  }
+/** Opens the "Forwarded" sheet for the next queued share once the vault is open. */
+function useShowPendingShares(ready: boolean, navTick: number) {
+  const pending = useVault(s => s.pendingShares);
+  useEffect(() => {
+    if (!ready || !pending.length || !navigationRef.isReady()) return;
+    const current = navigationRef.getCurrentRoute();
+    if (current?.name === 'Forwarded') return;
+    navigationRef.navigate('Forwarded', { shareId: pending[0].id });
+  }, [ready, pending, navTick]);
 }
 
-export default function App() {
-  const loadData = useNoteStore(state => state.loadData);
-  const isLoading = useNoteStore(state => state.isLoading);
-  const settings = useNoteStore(state => state.settings);
-  const storageError = useNoteStore(state => state.storageError);
-  const dismissStorageError = useNoteStore(state => state.dismissStorageError);
-  const systemScheme = useColorScheme();
+function Shell() {
+  const { c, dark } = useTheme();
+  const status = useVault(s => s.status);
+  const onboarding = useVault(s => s.onboarding);
+  const settings = useVault(s => s.settings);
+  const boot = useVault(s => s.boot);
+  const lock = useVault(s => s.lock);
+  const enqueueShare = useVault(s => s.enqueueShare);
+  const loadPrefs = usePrefs(s => s.load);
+  const [navReady, setNavReady] = React.useState(false);
+  const [navTick, setNavTick] = React.useState(0);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    void loadPrefs();
+    void boot();
+    void enableAppSwitcherPrivacy();
+  }, [boot, loadPrefs]);
 
-  // Handle deep links while app is already in foreground/background
+  // Screenshots are blocked until the vault says otherwise (lock screen included).
   useEffect(() => {
-    const sub = Linking.addEventListener('url', ({ url }) => {
-      if (url.startsWith('forward://share')) {
-        navigateToShare(url);
-      }
-    });
-    return () => sub.remove();
-  }, []);
+    void applyScreenCapturePolicy(status !== 'unlocked' || settings.blockScreenshots);
+  }, [status, settings.blockScreenshots]);
 
+  useShareIntake(useCallback((share: IncomingShare) => enqueueShare(share), [enqueueShare]));
+
+  useAutoLock({
+    enabled: status === 'unlocked',
+    seconds: settings.autoLockSeconds,
+    lock: () => void lock(),
+    onForeground: () => void flushClipboard(),
+  });
+
+  const unlocked = status === 'unlocked' && !onboarding;
+  useShowPendingShares(unlocked && navReady, navTick);
   useEffect(() => {
-    if (!storageError) return;
-    Alert.alert('Storage Issue', storageError, [
-      { text: 'OK', onPress: dismissStorageError },
-    ]);
-  }, [storageError, dismissStorageError]);
+    if (!unlocked) setNavReady(false);
+  }, [unlocked]);
 
-  const isDark =
-    settings.theme === 'dark' ||
-    (settings.theme === 'system' && systemScheme !== 'light');
-
-  // Show a minimal loading screen while data is being read from AsyncStorage.
-  // This prevents a flash of empty content before the store is hydrated.
-  if (isLoading) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: isDark ? '#0A0A0A' : '#F5F5F5',
-        }}
+  let content: React.ReactNode;
+  if (status === 'booting') content = <BootScreen />;
+  else if (status === 'setup' || onboarding) content = <OnboardingScreen />;
+  else if (status === 'locked') content = <LockScreen />;
+  else if (status === 'orphaned') content = <OrphanedScreen />;
+  else if (status === 'failed') content = <FailedScreen />;
+  else {
+    const base = dark ? DarkTheme : DefaultTheme;
+    content = (
+      <NavigationContainer
+        ref={navigationRef}
+        onReady={() => setNavReady(true)}
+        onStateChange={() => setNavTick(t => t + 1)}
+        theme={{ ...base, colors: { ...base.colors, background: c.bg, card: c.surface, text: c.text, border: c.border, primary: c.accent } }}
       >
-        <StatusBar style={isDark ? 'light' : 'dark'} />
-        <ActivityIndicator size="large" color="#7C6FE0" />
-      </View>
+        <AppNavigator />
+      </NavigationContainer>
     );
   }
 
   return (
-    <NavigationContainer
-      ref={navigationRef}
-      onReady={() => {
-        // Process the URL that originally opened this app (e.g. share intent).
-        // Using onReady guarantees the navigator is fully mounted before we try
-        // to navigate, so navigationRef.isReady() will always be true here.
-        Linking.getInitialURL().then(url => {
-          if (url && url.startsWith('forward://share')) {
-            navigateToShare(url);
-          }
-        });
-      }}
-    >
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      <AppNavigator />
-    </NavigationContainer>
+    <>
+      {content}
+      <ToastHost />
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <Shell />
+    </SafeAreaProvider>
   );
 }
