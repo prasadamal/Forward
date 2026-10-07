@@ -6,7 +6,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useVault } from '../store/vault';
 import { usePrefs } from '../store/prefs';
-import { getSession } from '../store/session';
+import { getSession, hasSession } from '../store/session';
 import { biometricLabel, BiometricSupport, getBiometricSupport } from '../security/biometrics';
 import { applyScreenCapturePolicy } from '../security/privacy';
 import { formatBytes } from '../utils/encoding';
@@ -57,6 +57,7 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     getBiometricSupport().then(setSupport);
+    if (!hasSession()) return;
     getSession()
       .repo.stats()
       .then(s => setBytes(s.bytes))

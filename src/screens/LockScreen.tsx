@@ -43,8 +43,15 @@ export default function LockScreen() {
   const tryBiometrics = useCallback(async () => {
     if (!bioEnabled || busy) return;
     setBusy(true);
-    const result = await unlockWithBiometrics();
-    setBusy(false);
+    let result;
+    try {
+      result = await unlockWithBiometrics();
+    } catch {
+      setError('Couldn’t use biometrics. Enter your passcode.');
+      return;
+    } finally {
+      setBusy(false);
+    }
     if (!result.ok && result.reason === 'invalidated') {
       setError(`${biometricLabel(bioKind)} changed on this device, so it was turned off. Use your passcode, then turn it back on in Settings.`);
     }
@@ -60,8 +67,16 @@ export default function LockScreen() {
   const submit = async (passcode: string) => {
     if (!passcode || busy) return;
     setBusy(true);
-    const result = await unlockWithPasscode(passcode);
-    setBusy(false);
+    let result;
+    try {
+      result = await unlockWithPasscode(passcode);
+    } catch (e) {
+      setValue('');
+      setError(e instanceof Error ? e.message : 'Something went wrong. Try again.');
+      return;
+    } finally {
+      setBusy(false);
+    }
     if (result.ok) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
     setValue('');

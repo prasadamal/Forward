@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Item } from '../types';
+import { isWalletType, Item } from '../types';
 import { SOURCE_INFO, TYPE_INFO } from '../constants/palette';
 import { radius, space, useTheme } from '../theme';
 import { useImageUri } from '../store/thumbs';
@@ -11,6 +11,7 @@ import { IconName, Txt } from './primitives';
 import { BRAND_LABEL } from '../wallet/cards';
 
 export function SourceBadge({ item, compact }: { item: Item; compact?: boolean }) {
+  if (item.source === 'manual') return null;
   const info = SOURCE_INFO[item.source] ?? SOURCE_INFO.web;
   return (
     <View style={[styles.badge, { backgroundColor: info.color + '22' }]}>
@@ -27,7 +28,11 @@ export function TypeIcon({ item, size = 52 }: { item: Item; size?: number }) {
   const color = item.type === 'link' ? SOURCE_INFO[item.source]?.color ?? c.accent : c.accent;
   return (
     <View style={[styles.thumb, { width: size, height: size, backgroundColor: color + '1F' }]}>
-      <Ionicons name={(item.sensitive ? 'lock-closed' : info.icon) as IconName} size={size * 0.42} color={color} />
+      <Ionicons
+        name={(item.sensitive && !isWalletType(item.type) ? 'lock-closed' : info.icon) as IconName}
+        size={size * 0.42}
+        color={color}
+      />
     </View>
   );
 }
@@ -115,7 +120,7 @@ function ItemRowBase({
           ) : null}
           <View style={{ flex: 1 }} />
           {item.pinned ? <Ionicons name="pin" size={12} color={c.warning} /> : null}
-          <Txt variant="small" color={c.textMuted}>
+          <Txt variant="small" color={c.textMuted} numberOfLines={1} style={{ flexShrink: 0 }}>
             {formatRelativeDate(item.createdAt)}
           </Txt>
         </View>

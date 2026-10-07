@@ -1,7 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme';
 import { TabParamList } from './types';
 import HomeScreen from '../screens/HomeScreen';
@@ -21,20 +20,13 @@ const ICONS: Record<keyof TabParamList, [IconName, IconName]> = {
 
 export default function TabNavigator() {
   const { c } = useTheme();
-  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: c.accent,
         tabBarInactiveTintColor: c.textMuted,
-        tabBarStyle: {
-          backgroundColor: c.tabBar,
-          borderTopColor: c.border,
-          height: 58 + insets.bottom,
-          paddingTop: 6,
-          paddingBottom: Math.max(insets.bottom, 8),
-        },
+        tabBarStyle: { backgroundColor: c.tabBar, borderTopColor: c.border },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         tabBarIcon: ({ focused, color }) => {
           const [on, off] = ICONS[route.name];

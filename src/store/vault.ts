@@ -218,7 +218,12 @@ export const useVault = create<VaultStore>((set, get) => {
     },
 
     unlockWithBiometrics: async () => {
-      const result = await keyring.unlockWithBiometrics('Unlock Forward');
+      let result: BiometricUnlockResult;
+      try {
+        result = await keyring.unlockWithBiometrics('Unlock Forward');
+      } catch {
+        return { ok: false, reason: 'unavailable' };
+      }
       if (result.ok) {
         try {
           await afterUnlock(result.key);

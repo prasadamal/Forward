@@ -64,9 +64,11 @@ export function PaymentCard({
             {expiry?.expired ? ' · expired' : ''}
           </Txt>
         </View>
-        <Txt variant="h3" color="#FFFFFF" style={{ fontStyle: 'italic' }}>
-          {BRAND_LABEL[meta.brand]}
-        </Txt>
+        {meta.brand !== 'other' ? (
+          <Txt variant="h3" color="#FFFFFF" style={{ fontStyle: 'italic' }}>
+            {BRAND_LABEL[meta.brand]}
+          </Txt>
+        ) : null}
       </View>
     </View>
   );

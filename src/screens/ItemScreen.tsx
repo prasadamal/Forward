@@ -23,6 +23,7 @@ import { FolderPickerSheet } from '../ui/folders';
 import { PaymentCard } from '../ui/PaymentCard';
 import { SecretField } from '../ui/SecretField';
 import { useReveal } from '../ui/useReveal';
+import { formatCardNumber } from '../wallet/cards';
 import { toast } from '../ui/Toast';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -340,7 +341,13 @@ export default function ItemScreen() {
         {/* ── Wallet: card details ── */}
         {item.type === 'card' && card && revealed && secret?.card ? (
           <View>
-            <SecretField label="Card number" value={secret.card.number} revealed mono onCopy={() => void copy(secret.card!.number, 'Card number')} />
+            <SecretField
+              label="Card number"
+              value={formatCardNumber(secret.card.number, card.brand)}
+              revealed
+              mono
+              onCopy={() => void copy(secret.card!.number, 'Card number')}
+            />
             <SecretField label="CVV" value={secret.card.cvv} revealed mono onCopy={() => void copy(secret.card!.cvv, 'CVV')} />
             <SecretField label="PIN" value={secret.card.pin} revealed mono onCopy={() => void copy(secret.card!.pin, 'PIN')} />
           </View>
@@ -415,7 +422,7 @@ export default function ItemScreen() {
             <View style={[styles.chips, { marginTop: space.md }]}>
               {item.tags.slice(0, 10).map(t => (
                 <Text key={t} style={[styles.tag, { color: c.textSecondary, backgroundColor: c.surfaceAlt }]}>
-                  #{t}
+                  #{t.replace(/\s+/g, '')}
                 </Text>
               ))}
             </View>
