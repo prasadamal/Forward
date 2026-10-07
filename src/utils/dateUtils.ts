@@ -1,4 +1,4 @@
-export function formatRelativeDate(isoDate: string): string {
+export function formatRelativeDate(isoDate: string | number): string {
   const now = new Date();
   const date = new Date(isoDate);
   const diff = now.getTime() - date.getTime();
@@ -23,7 +23,7 @@ export function formatRelativeDate(isoDate: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
-export function formatFullDate(isoDate: string): string {
+export function formatFullDate(isoDate: string | number): string {
   return new Date(isoDate).toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',

@@ -101,6 +101,10 @@ export class SqlCipherKeyringFile implements KeyringFile {
     await deleteDatabaseIfExists(KEYRING_NEXT_DB);
     const db = await SQLite.openDatabaseAsync(KEYRING_NEXT_DB, { useNewConnection: true });
     try {
+      const cipher = await db.getFirstAsync<{ cipher_version: string }>('PRAGMA cipher_version;').catch(() => null);
+      if (!cipher?.cipher_version) {
+        throw new Error('Database encryption (SQLCipher) is not available in this build.');
+      }
       await db.execAsync(`PRAGMA key = '${passphrase}';`);
       await db.execAsync(
         'CREATE TABLE keyring (id INTEGER PRIMARY KEY CHECK (id = 1), vault_key TEXT NOT NULL);',

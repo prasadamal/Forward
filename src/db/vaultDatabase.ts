@@ -6,6 +6,19 @@ import { databaseFile } from '../security/keyringNative';
 
 export const VAULT_DB = 'vault.db';
 
+export class EncryptionUnavailableError extends Error {
+  constructor() {
+    super('Database encryption (SQLCipher) is not available in this build. Use a Forward development or release build, not Expo Go.');
+    this.name = 'EncryptionUnavailableError';
+  }
+}
+
+/** Refuses to continue unless the SQLite library is SQLCipher, so data is never written unencrypted. */
+export async function assertSqlCipher(db: { get<T>(sql: string): Promise<T | null> }): Promise<void> {
+  const row = await db.get<{ cipher_version: string }>('PRAGMA cipher_version;').catch(() => null);
+  if (!row?.cipher_version) throw new EncryptionUnavailableError();
+}
+
 export function vaultExists(): boolean {
   return databaseFile(VAULT_DB).exists;
 }
@@ -15,6 +28,7 @@ export async function openVaultDatabase(key: Uint8Array): Promise<ExpoDatabase> 
   if (key.length !== 32) throw new Error('Invalid vault key');
   const db = await openExpoDatabase(VAULT_DB);
   try {
+    await assertSqlCipher(db);
     // Raw-key syntax skips SQLCipher's passphrase KDF: the key is already random.
     await db.exec(`PRAGMA key = "x'${bytesToHex(key)}'";`);
     // Fails with "file is not a database" if the key is wrong.

@@ -26,7 +26,7 @@ export interface IngestDeps {
   onChange: () => void;
 }
 
-async function saveDraft(draft: ItemDraft, deps: IngestDeps): Promise<IngestOutcome> {
+async function saveDraft(draft: ItemDraft, deps: IngestDeps, folderId?: string): Promise<IngestOutcome> {
   const { repo } = deps;
 
   if (draft.type === 'link' && draft.url) {
@@ -70,7 +70,8 @@ async function saveDraft(draft: ItemDraft, deps: IngestDeps): Promise<IngestOutc
     text: draft.text,
     url: draft.url,
     source: draft.source,
-    filing: 'auto',
+    filing: folderId ? 'manual' : 'auto',
+    folderIds: folderId ? [folderId] : [],
     meta: {
       ...(draft.type === 'link' ? { link: { autoTitle: draft.titleIsGuess } } : {}),
       ...(file && original
@@ -88,7 +89,7 @@ async function saveDraft(draft: ItemDraft, deps: IngestDeps): Promise<IngestOutc
     blobs,
   });
 
-  if (deps.settings().autoFile) {
+  if (!folderId && deps.settings().autoFile) {
     await autoFileItem(repo, item.id, classifyInputFor(item, { hint: draft.hint }));
   }
   return { status: 'saved', itemId: item.id, type: item.type };
@@ -99,7 +100,7 @@ export async function ingestShare(share: IncomingShare, deps: IngestDeps): Promi
   const outcomes: IngestOutcome[] = [];
   for (const draft of draftsFromShare(share)) {
     try {
-      outcomes.push(await saveDraft(draft, deps));
+      outcomes.push(await saveDraft(draft, deps, share.folderId));
     } catch (e) {
       outcomes.push({ status: 'failed', reason: 'error', name: draft.file?.name ?? draft.title });
     }
@@ -119,6 +120,8 @@ export async function enrichLink(itemId: string, deps: IngestDeps): Promise<void
   if (!item?.url || item.trashedAt) return;
 
   const preview = await deps.fetchPreview(item.url);
+  // Nothing came back (offline, blocked…): leave previewAt unset so it's retried later.
+  if (!preview.title && !preview.description && !preview.imageUrl && !preview.author) return;
   const fresh = await repo.getItem(itemId);
   if (!fresh) return;
 

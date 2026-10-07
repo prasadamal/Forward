@@ -219,4 +219,8 @@ export interface IncomingShare {
   /** Page description provided by the sending app (Safari on iOS). */
   description?: string;
   files: IncomingFile[];
+  /** 'share' = arrived from another app via the share sheet; 'app' = added inside Forward. */
+  origin?: 'share' | 'app';
+  /** File straight into this folder instead of auto-sorting. */
+  folderId?: string;
 }
