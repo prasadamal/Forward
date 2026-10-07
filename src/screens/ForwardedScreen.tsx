@@ -10,6 +10,8 @@ import { useFolderTree, useItem } from '../store/selectors';
 import { IngestOutcome } from '../ingest/ingest';
 import { MAX_FILE_BYTES } from '../ingest/mediaTypes';
 import { pathLabel } from '../folders/tree';
+import { Source } from '../types';
+import { SOURCE_INFO } from '../constants/palette';
 import { formatBytes } from '../utils/encoding';
 import { radius, space, useTheme } from '../theme';
 import { Button, Chip, Header, IconButton, Screen, Scroll, TextField, Txt } from '../ui/primitives';
@@ -25,7 +27,18 @@ function failureText(o: Extract<IngestOutcome, { status: 'failed' }>): string {
   return `${o.name ?? 'Something'} couldn’t be saved.`;
 }
 
-function Result({ outcome, onOpen, onPickFolders }: { outcome: IngestOutcome; onOpen: (id: string) => void; onPickFolders: (id: string) => void }) {
+function Result({
+  outcome,
+  canNote,
+  onOpen,
+  onPickFolders,
+}: {
+  outcome: IngestOutcome;
+  /** The note field is shown below, so the hint can point to it. */
+  canNote: boolean;
+  onOpen: (id: string) => void;
+  onPickFolders: (id: string) => void;
+}) {
   const { c } = useTheme();
   const tree = useFolderTree();
   const item = useItem(outcome.status === 'failed' ? undefined : outcome.itemId);
@@ -84,6 +97,10 @@ function Result({ outcome, onOpen, onPickFolders }: { outcome: IngestOutcome; on
               Reading the link to sort it…
             </Txt>
           </View>
+        ) : !folders.length ? (
+          <Txt variant="small" color={c.textSecondary}>
+            {unsortedHint(item.source, canNote)}
+          </Txt>
         ) : null}
       </View>
 
@@ -93,6 +110,15 @@ function Result({ outcome, onOpen, onPickFolders }: { outcome: IngestOutcome; on
       </View>
     </View>
   );
+}
+
+function unsortedHint(source: Source, canNote: boolean): string {
+  const fix = canNote
+    ? 'Add a word or two below, like “Bangalore café”, and Forward will file it.'
+    : 'Pick a folder, or add a note to the item later.';
+  // Instagram and Facebook show post captions only to people who are logged in.
+  if (source === 'instagram' || source === 'facebook') return `${SOURCE_INFO[source].label} doesn’t share post details with other apps. ${fix}`;
+  return `Forward couldn’t tell what this is about. ${fix}`;
 }
 
 export default function ForwardedScreen() {
@@ -184,7 +210,7 @@ export default function ForwardedScreen() {
           </Txt>
           {outcomes && saved.length ? (
             <Txt variant="caption" color={c.textSecondary} style={{ marginTop: 4, textAlign: 'center' }}>
-              Encrypted and sorted on this phone.
+              Encrypted and saved on this phone.
             </Txt>
           ) : null}
           {failed ? (
@@ -198,6 +224,7 @@ export default function ForwardedScreen() {
           <Result
             key={o.status === 'failed' ? `f${i}` : o.itemId}
             outcome={o}
+            canNote={!!single}
             onOpen={id => nav.replace('Item', { itemId: id })}
             onPickFolders={id => setPickFor(id)}
           />

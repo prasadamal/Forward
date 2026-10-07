@@ -11,17 +11,23 @@ passwords and secret notes. Plus the silly memes.
 > Bangalore on X. Share each one to Forward. All three land in **Bangalore** — as
 > `Bangalore › Food`, `Bangalore › Places to Visit` and `Bangalore › Apps & Tech` — no matter
 > which app they came from.
+>
+> Instagram often hides captions from other apps. When Forward can't read a post, it says so
+> and asks for a word or two ("Bangalore café") to file it.
 
 ## What it does
 
 - **Share from any app.** Links, text, images (GIFs included), videos and files arrive through
   the system share sheet (an iOS Share Extension, Android share intents). Up to 10 images at
   once.
-- **Sorted for you, offline.** An on-device classifier recognises places (about 190 cities,
-  states and countries, plus 200 neighbourhoods and landmarks such as Koramangala or Bandra
-  that point to their city) and 13 topics (Food, Places to Visit, Apps & Tech, Events,
-  Shopping, Movies & Music, Memes…). It reads titles, captions, hashtags (`#bangalorefoodie`),
-  URL slugs (`zomato.com/bangalore/…`) and known sites. No AI service and no API keys.
+- **Sorted for you, offline.** An on-device classifier recognises places and 13 topics (Food,
+  Places to Visit, Apps & Tech, Events, Shopping, Movies & Music, Memes…). It knows about 280
+  cities, states and countries, plus 300 neighbourhoods, landmarks and treks that point to
+  their place: Koramangala → Bangalore, Hampta Pass → Manali. It reads titles, captions,
+  hashtags (`#bangalorefoodie`), URL slugs (`zomato.com/bangalore/…`) and known sites, and
+  matches whole words only. "Real Madrid", "Mysore Pak" and "Mumbai-style" don't count as
+  places, and "Kolkata biryani in Bangalore" goes to Bangalore. No AI service and no API
+  keys.
 - **Folders as deep as you like.** Folders nest without limit, items can live in several
   folders, and any folder can **auto-collect** items that mention its keywords. Smart folders
   keep working after you rename or move them.
@@ -53,7 +59,7 @@ else. Some practical consequences, which are not legal advice:
   (YouTube, X) for a title and thumbnail. Turn previews off in Settings to stay fully offline.
 - **Store listings.** Nothing is sent to the developer or to any analytics or ad SDK, which
   is what the App Store privacy label and Google Play's Data safety form ask about. Both
-  stores require a privacy policy; mention the link previews in it.
+  stores require a privacy policy: [PRIVACY.md](PRIVACY.md) is ready to host.
 - **Encryption export compliance.** Forward contains encryption (SQLCipher), so App Store
   Connect asks export-compliance questions when you upload a build. For consumer software
   using standard encryption this is a self-classification, not a licence or an approval.
@@ -83,20 +89,38 @@ npx eas build --profile development --platform android   # or ios
 npx eas build --profile production --platform all
 ```
 
-**Before publishing**
+### Releasing
 
-- Change `ios.bundleIdentifier` and `android.package` in `app.json` from `com.forward.app` to
-  an identifier you own.
-- The share extension needs the App Group `group.<bundleIdentifier>` on both the app and the
+Checked against the store rules in force in October 2026:
+
+- **Platform requirements are already met.** Expo SDK 55 targets Android 16 (API 36), which
+  Google Play has required since 31 August 2026. EAS builds SDK 55 apps with Xcode 26.2, which
+  meets Apple's iOS 26 SDK rule.
+- **App ID.** `app.json` uses `com.prasadamal.forward` for both stores (v1's `com.forward.app`
+  was too generic to be sure of on Google Play). If you choose a studio name, change it before
+  the first upload, because it can never change afterwards.
+- **iOS share extension.** It needs the App Group `group.<bundle id>` on the app and on the
   `ForwardShare` target. EAS sets this up for you. When building locally, enable App Groups for
-  both targets in Xcode and pick your team.
-- On iPhone, Forward appears in the share sheet's app row as **Forward**. The first time,
-  users may need to tap **More** to add it to their favourites.
+  both targets in Xcode and pick your team. In the share sheet, Forward appears as
+  **Forward**; the first time, users may need to tap **More** to add it to their favourites.
+- **Privacy policy.** Host [PRIVACY.md](PRIVACY.md) (for example at `/privacy/forward`) and
+  fill in its three placeholders. Then put the URL in both store listings and set
+  `"extra": { "privacyPolicyUrl": "…" }` in `app.json`, so Settings › Privacy & security links
+  to it. Both stores also need a support URL or email.
+- **Store forms.**
+  - Google Play Data safety: no data collected or shared.
+  - App Store privacy label: Data Not Collected.
+  - Answer the content rating questionnaire and Apple's encryption export questions (see above).
+- **Testing.** A personal Google Play account created after 13 November 2023 must run a closed
+  test with at least 12 testers opted in for 14 days in a row before production unlocks. Use
+  TestFlight on iOS.
+- **Listing.** "Forward" is a common word, hard to rank or trademark. Consider a store title
+  such as "Forward: Save Reels & Links", and use screenshots from a real build.
 
 ## Development
 
 ```bash
-npm test           # 168 unit tests (classifier, URL tools, folder tree, repository on sql.js,
+npm test           # 179 unit tests (classifier, URL tools, folder tree, repository on sql.js,
                    # keyring, backups, share parsing, ingestion pipeline, wallet utils)
 npm run typecheck  # TypeScript, strict
 ```
@@ -119,13 +143,18 @@ src/
 ```
 
 Upgrading from Forward 1.x? On first launch the old notes (stored as plain JSON) move into the
-encrypted vault, and the plaintext copy is deleted.
+encrypted vault, and the plaintext copy is deleted. This only works for an install that has the
+same app ID. 1.x used `com.forward.app`, so a test phone with 1.x data needs a 2.x build with
+that ID, or the notes re-saved by hand.
 
 ## Ideas for next steps
 
+- City lists and a map of saved places
+- Shareable collections ("Bangalore cafés") as a link or image
+- Resurfacing ("6 saved places in Goa") from the folders you open, without asking for location
 - Read the text inside memes and screenshots with on-device OCR (Apple Vision, bundled ML Kit)
   so images sort themselves too
 - One-time codes (TOTP) for logins
 - A quick-save share sheet that files items without opening the app
 - Optional end-to-end-encrypted sync between your own devices
-- Import from Google Keep, Pocket and browser bookmarks; home-screen widgets
+- Import from Google Keep, Pocket export files and browser bookmarks; home-screen widgets
