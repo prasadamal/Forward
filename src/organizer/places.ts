@@ -6,6 +6,8 @@
  * - `areas` are neighbourhoods/landmarks that imply the place ("koramangala").
  * - `level`: 3 = city/destination, 2 = state/region, 1 = country. When two
  *   places score the same, the more specific one wins.
+ * - `ambiguous`: the bare name is also an everyday word ("puri" the bread,
+ *   "turkey" the bird), so only the aliases and areas count.
  */
 export interface PlaceDef {
   name: string;
@@ -13,7 +15,35 @@ export interface PlaceDef {
   level: 1 | 2 | 3;
   aliases?: string[];
   areas?: string[];
+  ambiguous?: boolean;
 }
+
+/**
+ * Phrases that contain a place name but aren't about the place: teams, films,
+ * brands and dishes. "Real Madrid highlights" is football, not Madrid, and a
+ * Mysore Pak recipe isn't a trip to Mysore. A longer match wins over the place
+ * name inside it, so "Mysore Pak from a shop in Mysore" still files under Mysore.
+ */
+export const NOT_PLACES: string[] = [
+  // Sports teams
+  'real madrid', 'atletico madrid', 'fc barcelona', 'barcelona fc', 'paris saint germain',
+  'mumbai indians', 'chennai super kings', 'royal challengers bangalore', 'royal challengers bengaluru',
+  'kolkata knight riders', 'sunrisers hyderabad', 'delhi capitals', 'rajasthan royals', 'punjab kings',
+  'lucknow super giants', 'gujarat titans', 'kerala blasters', 'bengaluru fc', 'mumbai city fc', 'fc goa',
+  'hyderabad fc', 'chennaiyin fc', 'new york yankees', 'new york knicks', 'chicago bulls', 'boston celtics',
+  'miami heat', 'toronto raptors', 'los angeles lakers', 'la lakers',
+  // Films and series
+  'chennai express', 'delhi belly', 'delhi crime', 'madras cafe', 'bangalore days', 'the kerala story',
+  'the kashmir files', 'go goa gone', 'bombay velvet', 'bombay begums', 'kota factory', 'emily in paris',
+  'badrinath ki dulhania', 'mumbai saga', 'london dreams',
+  // Brands, people, dishes
+  'new york times', 'paris hilton', 'bombay sapphire', 'bombay dyeing', 'bombay shaving company',
+  'mysore sandal', 'mysore pak', 'mysore masala dosa', 'mysore bonda', 'mangalore buns', 'bombay duck',
+  'bombay sandwich', 'dubai chocolate', 'new york cheesecake', 'new york style', 'chicago style',
+  'lord dalhousie', 'chicken madras', 'beef madras', 'madras curry', 'assam tea', 'darjeeling tea', 'bone china', 'fine china',
+  'manhattan cocktail', 'singapore noodles', 'boston dynamics', 'boston terrier', 'boston cream',
+  'florence pugh', 'florence nightingale', 'sydney sweeney', 'austin butler', 'austin powers',
+];
 
 export const PLACES: PlaceDef[] = [
   // ── India: metros ────────────────────────────────────────────────────────
@@ -98,16 +128,16 @@ export const PLACES: PlaceDef[] = [
   { name: 'Thane', emoji: '🏙️', level: 3 },
 
   // ── India: cities & destinations ─────────────────────────────────────────
-  { name: 'Mysore', emoji: '🏰', level: 3, aliases: ['mysuru'], areas: ['mysore palace', 'chamundi hills'] },
+  { name: 'Mysore', emoji: '🏰', level: 3, aliases: ['mysuru'], areas: ['mysore palace', 'chamundi hills', 'kabini'] },
   { name: 'Mangalore', emoji: '🐟', level: 3, aliases: ['mangaluru', 'kudla'] },
   { name: 'Udupi', emoji: '🛕', level: 3, areas: ['malpe'] },
   { name: 'Hubli', emoji: '🏙️', level: 3, aliases: ['hubballi', 'hubli dharwad', 'dharwad'] },
   { name: 'Belgaum', emoji: '🏙️', level: 3, aliases: ['belagavi'] },
   { name: 'Coorg', emoji: '☕', level: 3, aliases: ['kodagu', 'madikeri'] },
-  { name: 'Chikmagalur', emoji: '☕', level: 3, aliases: ['chikkamagaluru', 'mullayanagiri'] },
+  { name: 'Chikmagalur', emoji: '☕', level: 3, aliases: ['chikkamagaluru', 'mullayanagiri'], areas: ['kudremukh', 'baba budangiri'] },
   { name: 'Hampi', emoji: '🪨', level: 3 },
   { name: 'Gokarna', emoji: '🏖️', level: 3 },
-  { name: 'Nandi Hills', emoji: '🌄', level: 3 },
+  { name: 'Nandi Hills', emoji: '🌄', level: 3, areas: ['skandagiri'] },
   { name: 'Ooty', emoji: '🚂', level: 3, aliases: ['udhagamandalam', 'ooty hills'] },
   { name: 'Kodaikanal', emoji: '🌲', level: 3 },
   { name: 'Coimbatore', emoji: '🏙️', level: 3, aliases: ['kovai'] },
@@ -122,8 +152,8 @@ export const PLACES: PlaceDef[] = [
   { name: 'Visakhapatnam', emoji: '⚓', level: 3, aliases: ['vizag'], areas: ['araku valley', 'araku'] },
   { name: 'Vijayawada', emoji: '🏙️', level: 3 },
   { name: 'Tirupati', emoji: '🛕', level: 3, aliases: ['tirumala'] },
-  { name: 'Goa', emoji: '🏖️', level: 3, aliases: ['panaji', 'panjim'], areas: ['baga', 'anjuna', 'calangute', 'palolem', 'vagator', 'candolim', 'arambol', 'morjim'] },
-  { name: 'Lonavala', emoji: '⛰️', level: 3, aliases: ['khandala'] },
+  { name: 'Goa', emoji: '🏖️', level: 3, aliases: ['panaji', 'panjim'], areas: ['baga', 'anjuna', 'calangute', 'palolem', 'vagator', 'candolim', 'arambol', 'morjim', 'agonda', 'colva', 'old goa', 'dudhsagar'] },
+  { name: 'Lonavala', emoji: '⛰️', level: 3, aliases: ['khandala'], areas: ['rajmachi', 'lohagad', 'tiger point lonavala'] },
   { name: 'Mahabaleshwar', emoji: '🍓', level: 3 },
   { name: 'Nashik', emoji: '🍇', level: 3, aliases: ['nasik'] },
   { name: 'Nagpur', emoji: '🍊', level: 3 },
@@ -141,17 +171,17 @@ export const PLACES: PlaceDef[] = [
   { name: 'Dehradun', emoji: '🌲', level: 3 },
   { name: 'Mussoorie', emoji: '⛰️', level: 3 },
   { name: 'Nainital', emoji: '🏞️', level: 3 },
-  { name: 'Manali', emoji: '🏔️', level: 3, areas: ['solang', 'rohtang'] },
+  { name: 'Manali', emoji: '🏔️', level: 3, areas: ['solang', 'rohtang', 'hampta pass', 'bhrigu lake', 'beas kund', 'jogini falls', 'sethan'] },
   { name: 'Shimla', emoji: '🏔️', level: 3 },
-  { name: 'Kasol', emoji: '🏕️', level: 3, aliases: ['parvati valley'] },
-  { name: 'Dharamshala', emoji: '🏔️', level: 3, aliases: ['mcleodganj', 'mcleod ganj'] },
-  { name: 'Spiti', emoji: '🏔️', level: 3, aliases: ['spiti valley'] },
-  { name: 'Leh', emoji: '⛰️', level: 3, aliases: ['ladakh', 'leh ladakh'], areas: ['pangong', 'nubra'] },
+  { name: 'Kasol', emoji: '🏕️', level: 3, aliases: ['parvati valley'], areas: ['kheerganga', 'tosh village', 'malana'] },
+  { name: 'Dharamshala', emoji: '🏔️', level: 3, aliases: ['mcleodganj', 'mcleod ganj'], areas: ['triund', 'bhagsu'] },
+  { name: 'Spiti', emoji: '🏔️', level: 3, aliases: ['spiti valley'], areas: ['kaza', 'chandratal', 'key monastery', 'kibber'] },
+  { name: 'Leh', emoji: '⛰️', level: 3, aliases: ['ladakh', 'leh ladakh'], areas: ['pangong', 'nubra', 'khardung la', 'khardungla', 'tso moriri', 'chadar trek', 'markha valley', 'zanskar', 'turtuk', 'hanle'] },
   { name: 'Srinagar', emoji: '🛶', level: 3, areas: ['dal lake', 'gulmarg', 'pahalgam', 'sonamarg'] },
   { name: 'Amritsar', emoji: '🛕', level: 3, areas: ['golden temple'] },
   { name: 'Chandigarh', emoji: '🌹', level: 3 },
   { name: 'Darjeeling', emoji: '🍵', level: 3 },
-  { name: 'Gangtok', emoji: '🏔️', level: 3, aliases: ['sikkim'] },
+  { name: 'Gangtok', emoji: '🏔️', level: 3, areas: ['mg marg gangtok', 'tsomgo lake', 'nathula', 'nathu la'] },
   { name: 'Shillong', emoji: '🌧️', level: 3, aliases: ['cherrapunji', 'sohra'] },
   { name: 'Guwahati', emoji: '🏞️', level: 3 },
   { name: 'Bhubaneswar', emoji: '🛕', level: 3, areas: ['konark'] },
@@ -165,24 +195,132 @@ export const PLACES: PlaceDef[] = [
   { name: 'Andaman', emoji: '🏝️', level: 3, aliases: ['andaman and nicobar', 'port blair', 'havelock island', 'havelock', 'swaraj dweep', 'neil island'] },
   { name: 'Lakshadweep', emoji: '🏝️', level: 3 },
 
+  // Kerala
+  { name: 'Kozhikode', emoji: '🍛', level: 3, aliases: ['calicut'], areas: ['kozhikode beach', 'calicut beach', 'sm street'] },
+  { name: 'Thrissur', emoji: '🐘', level: 3, aliases: ['trichur'], areas: ['thrissur pooram', 'athirappilly'] },
+  { name: 'Kannur', emoji: '🏖️', level: 3, aliases: ['cannanore'], areas: ['muzhappilangad'] },
+  { name: 'Kollam', emoji: '⛵', level: 3, aliases: ['quilon'], areas: ['munroe island', 'munroe thuruthu'] },
+  { name: 'Kottayam', emoji: '🛶', level: 3, areas: ['kumarakom'] },
+  { name: 'Palakkad', emoji: '🌾', level: 3, aliases: ['palghat'], areas: ['nelliyampathy'] },
+  { name: 'Thekkady', emoji: '🐘', level: 3, aliases: ['kumily'] },
+  { name: 'Vagamon', emoji: '🌄', level: 3, aliases: ['wagamon'] },
+  // Karnataka
+  { name: 'Shimoga', emoji: '🌊', level: 3, aliases: ['shivamogga'], areas: ['jog falls', 'agumbe'] },
+  { name: 'Sakleshpur', emoji: '🚂', level: 3 },
+  { name: 'Dandeli', emoji: '🛶', level: 3 },
+  { name: 'Murudeshwar', emoji: '🛕', level: 3, aliases: ['murudeshwara'] },
+  { name: 'Davanagere', emoji: '🥞', level: 3, aliases: ['davangere'] },
+  { name: 'Bijapur', emoji: '🕌', level: 3, aliases: ['vijayapura'], areas: ['gol gumbaz'] },
+  { name: 'Badami', emoji: '🪨', level: 3, ambiguous: true, aliases: ['badami caves', 'badami cave temples', 'badami chalukya'], areas: ['pattadakal', 'aihole'] },
+  // Tamil Nadu
+  { name: 'Tiruchirappalli', emoji: '🛕', level: 3, aliases: ['trichy', 'tiruchi'], areas: ['srirangam', 'rockfort'] },
+  { name: 'Thanjavur', emoji: '🛕', level: 3, aliases: ['tanjore'], areas: ['brihadeeswarar'] },
+  { name: 'Tirunelveli', emoji: '🍬', level: 3, aliases: ['nellai'] },
+  { name: 'Vellore', emoji: '🏰', level: 3 },
+  { name: 'Rameswaram', emoji: '🌊', level: 3, aliases: ['rameshwaram'], areas: ['dhanushkodi', 'pamban bridge'] },
+  { name: 'Kanyakumari', emoji: '🌅', level: 3, aliases: ['cape comorin'] },
+  { name: 'Mahabalipuram', emoji: '🛕', level: 3, aliases: ['mamallapuram'] },
+  { name: 'Yercaud', emoji: '⛰️', level: 3 },
+  { name: 'Valparai', emoji: '🍃', level: 3 },
+  // Andhra Pradesh & Telangana
+  { name: 'Warangal', emoji: '🏛️', level: 3, areas: ['ramappa temple'] },
+  { name: 'Guntur', emoji: '🌶️', level: 3 },
+  { name: 'Nellore', emoji: '🍛', level: 3 },
+  { name: 'Gandikota', emoji: '🏜️', level: 3 },
+  { name: 'Srisailam', emoji: '🛕', level: 3 },
+  // Maharashtra & Gujarat
+  { name: 'Kolhapur', emoji: '🌶️', level: 3 },
+  { name: 'Solapur', emoji: '🏙️', level: 3 },
+  { name: 'Alibaug', emoji: '🏖️', level: 3, aliases: ['alibag'] },
+  { name: 'Matheran', emoji: '🚂', level: 3 },
+  { name: 'Shirdi', emoji: '🛕', level: 3 },
+  { name: 'Ratnagiri', emoji: '🥭', level: 3, areas: ['ganpatipule'] },
+  { name: 'Rajkot', emoji: '🏙️', level: 3 },
+  { name: 'Gandhinagar', emoji: '🏛️', level: 3 },
+  { name: 'Bhuj', emoji: '🏜️', level: 3 },
+  { name: 'Somnath', emoji: '🛕', level: 3, ambiguous: true, aliases: ['somnath temple', 'somnath jyotirlinga'] },
+  { name: 'Saputara', emoji: '⛰️', level: 3 },
+  { name: 'Diu', emoji: '🏖️', level: 3, aliases: ['daman and diu'] },
+  // Rajasthan & Madhya Pradesh
+  { name: 'Ajmer', emoji: '🕌', level: 3, areas: ['ajmer sharif'] },
+  { name: 'Bikaner', emoji: '🐪', level: 3 },
+  { name: 'Mount Abu', emoji: '⛰️', level: 3, areas: ['dilwara', 'nakki lake'] },
+  { name: 'Kota', emoji: '🏙️', level: 3 },
+  { name: 'Chittorgarh', emoji: '🏰', level: 3, aliases: ['chittor fort', 'chittorgarh fort'] },
+  { name: 'Ranthambore', emoji: '🐅', level: 3, aliases: ['ranthambhore', 'sawai madhopur'] },
+  { name: 'Jabalpur', emoji: '🏞️', level: 3, areas: ['bhedaghat'] },
+  { name: 'Gwalior', emoji: '🏰', level: 3 },
+  { name: 'Ujjain', emoji: '🛕', level: 3, areas: ['mahakaleshwar'] },
+  { name: 'Khajuraho', emoji: '🛕', level: 3 },
+  { name: 'Pachmarhi', emoji: '🌲', level: 3 },
+  { name: 'Orchha', emoji: '🏰', level: 3 },
+  // Uttar Pradesh, Bihar, Jharkhand
+  { name: 'Kanpur', emoji: '🏙️', level: 3 },
+  { name: 'Prayagraj', emoji: '🪔', level: 3, aliases: ['allahabad'], areas: ['triveni sangam', 'kumbh mela'] },
+  { name: 'Mathura', emoji: '🛕', level: 3 },
+  { name: 'Vrindavan', emoji: '🛕', level: 3, aliases: ['vrindavana', 'brindavan'] },
+  { name: 'Ayodhya', emoji: '🛕', level: 3 },
+  { name: 'Ghaziabad', emoji: '🏙️', level: 3 },
+  { name: 'Meerut', emoji: '🏙️', level: 3 },
+  { name: 'Bodh Gaya', emoji: '☸️', level: 3, aliases: ['bodhgaya'] },
+  { name: 'Jamshedpur', emoji: '🏭', level: 3 },
+  // Uttarakhand & Himachal
+  { name: 'Auli', emoji: '⛷️', level: 3 },
+  { name: 'Kedarnath', emoji: '🛕', level: 3 },
+  { name: 'Badrinath', emoji: '🛕', level: 3 },
+  { name: 'Jim Corbett', emoji: '🐅', level: 3, aliases: ['corbett', 'corbett national park'] },
+  { name: 'Almora', emoji: '🌲', level: 3 },
+  { name: 'Ranikhet', emoji: '🌲', level: 3 },
+  { name: 'Chopta', emoji: '🏔️', level: 3, areas: ['tungnath', 'chandrashila'] },
+  { name: 'Kasauli', emoji: '🌲', level: 3 },
+  { name: 'Dalhousie', emoji: '🌲', level: 3, areas: ['khajjiar'] },
+  { name: 'Bir Billing', emoji: '🪂', level: 3, aliases: ['bir billing paragliding'] },
+  { name: 'Tirthan Valley', emoji: '🏞️', level: 3, aliases: ['tirthan'], areas: ['jibhi', 'jalori pass'] },
+  { name: 'Kinnaur', emoji: '🍎', level: 3, areas: ['kalpa kinnaur', 'sangla', 'chitkul'] },
+  // Punjab, Haryana, Jammu
+  { name: 'Ludhiana', emoji: '🏙️', level: 3 },
+  { name: 'Jalandhar', emoji: '🏙️', level: 3 },
+  { name: 'Faridabad', emoji: '🏙️', level: 3 },
+  { name: 'Jammu', emoji: '🛕', level: 3, areas: ['vaishno devi', 'katra jammu'] },
+  // East & Northeast
+  { name: 'Puri', emoji: '🛕', level: 3, ambiguous: true, aliases: ['jagannath puri', 'puri jagannath', 'puri beach', 'puri odisha', 'puri rath yatra'] },
+  { name: 'Cuttack', emoji: '🏙️', level: 3 },
+  { name: 'Siliguri', emoji: '🏙️', level: 3 },
+  { name: 'Kalimpong', emoji: '🌸', level: 3 },
+  { name: 'Sundarbans', emoji: '🐅', level: 3, aliases: ['sundarban'] },
+  { name: 'Digha', emoji: '🏖️', level: 3 },
+  { name: 'Tawang', emoji: '🏔️', level: 3, areas: ['sela pass'] },
+  { name: 'Ziro', emoji: '🌾', level: 3, aliases: ['ziro valley'] },
+  { name: 'Kaziranga', emoji: '🦏', level: 3 },
+  { name: 'Majuli', emoji: '🏝️', level: 3 },
+  { name: 'Imphal', emoji: '🏞️', level: 3, areas: ['loktak lake'] },
+  { name: 'Kohima', emoji: '🏞️', level: 3, areas: ['dzukou valley', 'hornbill festival'] },
+  { name: 'Aizawl', emoji: '🏞️', level: 3 },
+  { name: 'Agartala', emoji: '🏞️', level: 3 },
+
   // ── India: states & regions ──────────────────────────────────────────────
-  { name: 'Karnataka', emoji: '🗺️', level: 2 },
+  { name: 'Karnataka', emoji: '🗺️', level: 2, areas: ['kumara parvatha', 'kumaraparvatha', 'kukke subramanya'] },
   { name: 'Kerala', emoji: '🌴', level: 2, aliases: ["god's own country", 'gods own country'] },
   { name: 'Tamil Nadu', emoji: '🗺️', level: 2 },
-  { name: 'Maharashtra', emoji: '🗺️', level: 2 },
+  { name: 'Maharashtra', emoji: '🗺️', level: 2, areas: ['kalsubai', 'harishchandragad', 'raigad fort', 'konkan'] },
   { name: 'Rajasthan', emoji: '🐪', level: 2 },
   { name: 'Himachal', emoji: '🏔️', level: 2, aliases: ['himachal pradesh'] },
-  { name: 'Uttarakhand', emoji: '🏔️', level: 2 },
+  { name: 'Uttarakhand', emoji: '🏔️', level: 2, areas: ['valley of flowers', 'kedarkantha', 'roopkund', 'har ki dun', 'brahmatal', 'kuari pass', 'dayara bugyal', 'nag tibba', 'hemkund sahib', 'char dham'] },
   { name: 'Kashmir', emoji: '🏔️', level: 2, aliases: ['jammu and kashmir'] },
-  { name: 'Northeast India', emoji: '🌿', level: 2, aliases: ['north east india', 'meghalaya', 'arunachal', 'nagaland', 'assam'] },
+  { name: 'Northeast India', emoji: '🌿', level: 2, aliases: ['north east india', 'meghalaya', 'arunachal', 'arunachal pradesh', 'nagaland', 'assam', 'manipur', 'mizoram', 'tripura'] },
+  { name: 'Sikkim', emoji: '🏔️', level: 2, areas: ['pelling', 'lachung', 'lachen', 'yumthang', 'zuluk', 'gurudongmar', 'goechala', 'dzongri', 'ravangla'] },
   { name: 'Telangana', emoji: '🗺️', level: 2 },
   { name: 'Andhra Pradesh', emoji: '🗺️', level: 2 },
-  { name: 'Gujarat', emoji: '🗺️', level: 2, areas: ['rann of kutch', 'kutch'] },
+  { name: 'Gujarat', emoji: '🗺️', level: 2, areas: ['rann of kutch', 'kutch', 'gir national park', 'sasan gir', 'statue of unity'] },
   { name: 'West Bengal', emoji: '🗺️', level: 2 },
   { name: 'Punjab', emoji: '🌾', level: 2 },
-  { name: 'Madhya Pradesh', emoji: '🐅', level: 2 },
+  { name: 'Madhya Pradesh', emoji: '🐅', level: 2, areas: ['kanha national park', 'bandhavgarh', 'pench national park'] },
   { name: 'Uttar Pradesh', emoji: '🗺️', level: 2 },
-  { name: 'Odisha', emoji: '🗺️', level: 2, aliases: ['orissa'] },
+  { name: 'Odisha', emoji: '🗺️', level: 2, aliases: ['orissa'], areas: ['chilika', 'chilka lake'] },
+  { name: 'Bihar', emoji: '🗺️', level: 2 },
+  { name: 'Jharkhand', emoji: '🗺️', level: 2 },
+  { name: 'Chhattisgarh', emoji: '🗺️', level: 2, aliases: ['chattisgarh'] },
+  { name: 'Haryana', emoji: '🗺️', level: 2 },
   { name: 'India', emoji: '🇮🇳', level: 1, aliases: ['bharat', 'incredible india'] },
 
   // ── Asia ─────────────────────────────────────────────────────────────────
@@ -211,7 +349,7 @@ export const PLACES: PlaceDef[] = [
   { name: 'Kathmandu', emoji: '🏔️', level: 3, areas: ['thamel', 'pokhara'] },
   { name: 'Colombo', emoji: '🌴', level: 3 },
   { name: 'Maldives', emoji: '🏝️', level: 3, aliases: ['male maldives'] },
-  { name: 'Bhutan', emoji: '🏔️', level: 1, aliases: ['thimphu', 'paro'] },
+  { name: 'Bhutan', emoji: '🏔️', level: 1, aliases: ['thimphu', 'paro bhutan', 'paro valley', 'paro taktsang', "tiger's nest"] },
   { name: 'Nepal', emoji: '🏔️', level: 1 },
   { name: 'Sri Lanka', emoji: '🌴', level: 1, aliases: ['srilanka'], areas: ['kandy', 'galle', 'sigiriya'] },
   { name: 'Thailand', emoji: '🐘', level: 1 },
@@ -222,7 +360,7 @@ export const PLACES: PlaceDef[] = [
   { name: 'South Korea', emoji: '🇰🇷', level: 1, aliases: ['korea'] },
   { name: 'China', emoji: '🇨🇳', level: 1 },
   { name: 'UAE', emoji: '🇦🇪', level: 1, aliases: ['united arab emirates'] },
-  { name: 'Turkey', emoji: '🇹🇷', level: 1, aliases: ['turkiye'], areas: ['cappadocia', 'antalya'] },
+  { name: 'Turkey', emoji: '🇹🇷', level: 1, ambiguous: true, aliases: ['turkiye', 'türkiye', 'turkey trip', 'turkey travel', 'visit turkey', 'turkey itinerary'], areas: ['cappadocia', 'antalya'] },
   { name: 'Istanbul', emoji: '🕌', level: 3 },
 
   // ── Europe ───────────────────────────────────────────────────────────────
@@ -231,7 +369,7 @@ export const PLACES: PlaceDef[] = [
   { name: 'Amsterdam', emoji: '🚲', level: 3 },
   { name: 'Berlin', emoji: '🐻', level: 3 },
   { name: 'Munich', emoji: '🍺', level: 3, aliases: ['munchen'] },
-  { name: 'Rome', emoji: '🏛️', level: 3, aliases: ['roma'] },
+  { name: 'Rome', emoji: '🏛️', level: 3 },
   { name: 'Venice', emoji: '🛶', level: 3, aliases: ['venezia'] },
   { name: 'Florence', emoji: '🎨', level: 3, aliases: ['firenze'] },
   { name: 'Milan', emoji: '👗', level: 3, aliases: ['milano'] },

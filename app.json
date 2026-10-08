@@ -14,10 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.forward.app"
+      "bundleIdentifier": "com.prasadamal.forward"
     },
     "android": {
-      "package": "com.forward.app",
+      "package": "com.prasadamal.forward",
       "allowBackup": false,
       "adaptiveIcon": {
         "backgroundColor": "#0B0B12",

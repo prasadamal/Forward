@@ -1,9 +1,13 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Alert, Linking, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { useNavigation } from '@react-navigation/native';
 import { space, useTheme } from '../theme';
-import { Card, Header, IconName, Screen, Scroll, Txt } from '../ui/primitives';
+import { Button, Card, Header, IconName, Screen, Scroll, Txt } from '../ui/primitives';
+
+/** Set `expo.extra.privacyPolicyUrl` in app.json once the policy is hosted (see PRIVACY.md). */
+const POLICY_URL = Constants.expoConfig?.extra?.privacyPolicyUrl as string | undefined;
 
 const SECTIONS: { icon: IconName; title: string; body: string }[] = [
   {
@@ -29,7 +33,7 @@ const SECTIONS: { icon: IconName; title: string; body: string }[] = [
   {
     icon: 'globe-outline',
     title: 'What goes online',
-    body: 'Only link previews: when you forward a link, Forward asks that same site (for example YouTube) for the title and thumbnail so it can sort it. You can turn this off in Settings; sorting then works from the text you share.',
+    body: 'Only link previews: when you forward a link, Forward asks that site, its image server or its public preview service (YouTube, X) for the title and thumbnail so it can sort it. Some apps, like Instagram, hide post details from anyone not logged in; a short note does the job instead. You can turn previews off in Settings; sorting then works from the text you share.',
   },
   {
     icon: 'shield-checkmark-outline',
@@ -68,6 +72,14 @@ export default function PrivacyScreen() {
             </View>
           </Card>
         ))}
+        {POLICY_URL ? (
+          <Button
+            title="Read the full privacy policy"
+            variant="secondary"
+            icon="document-text-outline"
+            onPress={() => Linking.openURL(POLICY_URL).catch(() => Alert.alert('Can’t open link', POLICY_URL))}
+          />
+        ) : null}
       </Scroll>
     </Screen>
   );

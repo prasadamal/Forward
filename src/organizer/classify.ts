@@ -1,4 +1,4 @@
-import { PLACES, PlaceDef } from './places';
+import { NOT_PLACES, PLACES, PlaceDef } from './places';
 import { TOPICS, TopicDef } from './topics';
 import { extractHashtags, normalizePhrase, normalizeText, phraseVariants } from './text';
 import { matchesDomain, urlPathWords } from '../ingest/urls';
@@ -53,12 +53,18 @@ const DOMAIN_SCORE = 3;
 const EMOJI_SCORE = 2;
 const PLACE_MIN_SCORE = 1.5;
 const COUNTRY_MIN_SCORE = 3;
+/** Extra weight for a place right after "in", "at", "near"…: "Kolkata biryani in Bangalore". */
+const LOCATED_BONUS = 1 / 6;
+const LOCATING_WORDS = new Set(['in', 'at', 'near', 'around', 'to', 'visit', 'visiting', 'explore', 'exploring']);
 const TOPIC_MIN_SCORE = 2;
+
+/** Target index of phrases that only exist to block a shorter match (NOT_PLACES). */
+const BLOCKER = -1;
 
 interface PhraseEntry {
   words: string[];
   phrase: string;
-  /** Index into PLACES or TOPICS. */
+  /** Index into PLACES or TOPICS, or BLOCKER. */
   target: number;
   /** 1 for strong keywords and place names, 0.5 for weak keywords. */
   weight: number;
@@ -98,13 +104,21 @@ function getPlaceIndex(): PhraseIndex {
   if (!placeIndex) {
     const entries: PhraseEntry[] = [];
     PLACES.forEach((p, i) => {
-      for (const name of [p.name, ...(p.aliases ?? []), ...(p.areas ?? [])]) {
+      for (const name of [...(p.ambiguous ? [] : [p.name]), ...(p.aliases ?? []), ...(p.areas ?? [])]) {
         entries.push(entry(name, i, 1));
       }
     });
+    for (const phrase of NOT_PLACES) entries.push(entry(phrase, BLOCKER, 0));
     placeIndex = buildIndex(entries);
   }
   return placeIndex;
+}
+
+let blocked: string[] | null = null;
+
+function blockedKeys(): string[] {
+  if (!blocked) blocked = NOT_PLACES.map(p => normalizePhrase(p).split(' ').join(''));
+  return blocked;
 }
 
 function getTopicIndex(): PhraseIndex {
@@ -128,10 +142,18 @@ interface Hit {
   weight: number;
   phrase: string;
   position: number;
+  /** Number of words matched. */
+  length: number;
+  /** Preceded by "in", "at", "near"… (places only). */
+  located?: boolean;
 }
 
-/** Find every indexed phrase occurring in a list of tokens. */
-function scan(tokens: string[], index: PhraseIndex, positionOffset: number): Hit[] {
+/**
+ * Find every indexed phrase occurring in a list of tokens. For places, a name
+ * followed by "style" ("Mumbai style vada pav") describes food or fashion, not
+ * the place, and a name after "in"/"at"/"near" is marked as located.
+ */
+function scan(tokens: string[], index: PhraseIndex, positionOffset: number, places = false): Hit[] {
   const hits: Hit[] = [];
   for (let i = 0; i < tokens.length; i++) {
     const candidates = index.byFirstWord.get(tokens[i]);
@@ -145,10 +167,26 @@ function scan(tokens: string[], index: PhraseIndex, positionOffset: number): Hit
           break;
         }
       }
-      if (ok) hits.push({ target: c.target, weight: c.weight, phrase: c.phrase, position: positionOffset + i });
+      if (!ok) continue;
+      if (places && tokens[i + c.words.length] === 'style') continue;
+      hits.push({
+        target: c.target,
+        weight: c.weight,
+        phrase: c.phrase,
+        position: positionOffset + i,
+        length: c.words.length,
+        located: places && i > 0 && LOCATING_WORDS.has(tokens[i - 1]),
+      });
     }
   }
-  return hits;
+  // The longest match wins: "fort kochi" over "kochi", "real madrid" over "madrid".
+  const kept = hits.filter(
+    h =>
+      !hits.some(
+        o => o.length > h.length && o.position <= h.position && o.position + o.length >= h.position + h.length,
+      ),
+  );
+  return kept.filter(h => h.target !== BLOCKER);
 }
 
 /** Hashtag hits for joined (#streetfood) and compound (#bangalorefoodie) tags. */
@@ -158,21 +196,21 @@ function scanHashtags(tags: string[], index: PhraseIndex, minCompoundLength: num
     const parts = rawTag.split('_').filter(Boolean);
     const tag = parts.join('');
     for (const { key, entry: e } of index.joined) {
-      if (key.length < 3) continue;
+      if (key.length < 3 || e.target === BLOCKER) continue;
       if (tag === key) {
         // Single-word exact tags are already counted via the text fields.
-        if (e.words.length > 1) hits.push({ target: e.target, weight: e.weight * HASHTAG_EXACT, phrase: e.phrase, position: 10_000 + tagIndex });
+        if (e.words.length > 1) hits.push({ target: e.target, weight: e.weight * HASHTAG_EXACT, phrase: e.phrase, position: 10_000 + tagIndex, length: 1 });
         continue;
       }
       if (parts.length > 1 && parts.includes(key)) {
-        hits.push({ target: e.target, weight: e.weight * HASHTAG_EXACT, phrase: e.phrase, position: 10_000 + tagIndex });
+        hits.push({ target: e.target, weight: e.weight * HASHTAG_EXACT, phrase: e.phrase, position: 10_000 + tagIndex, length: 1 });
         continue;
       }
       if (key.length < minCompoundLength) continue;
       const compound =
         tag.startsWith(key) || tag.endsWith(key) || (key.length >= 7 && tag.includes(key));
       if (compound) {
-        hits.push({ target: e.target, weight: e.weight * HASHTAG_COMPOUND, phrase: e.phrase, position: 10_000 + tagIndex });
+        hits.push({ target: e.target, weight: e.weight * HASHTAG_COMPOUND, phrase: e.phrase, position: 10_000 + tagIndex, length: 1 });
       }
     }
   });
@@ -189,6 +227,7 @@ function accumulate(
   fields: { name: FieldName; tokens: string[]; offset: number }[],
   hashtagHits: Hit[],
   index: PhraseIndex,
+  places = false,
 ): Map<number, Accumulator> {
   const acc = new Map<number, Accumulator>();
   const touch = (target: number): Accumulator => {
@@ -201,14 +240,14 @@ function accumulate(
   };
 
   for (const field of fields) {
-    const hits = scan(field.tokens, index, field.offset);
+    const hits = scan(field.tokens, index, field.offset, places);
     // Per target: the best phrase weight in this field, plus a small bonus for
     // several distinct phrases ("biryani" + "street food" + "restaurant").
     const perTarget = new Map<number, Hit[]>();
     for (const h of hits) perTarget.set(h.target, [...(perTarget.get(h.target) ?? []), h]);
     for (const [target, targetHits] of perTarget) {
       const a = touch(target);
-      const best = Math.max(...targetHits.map(h => h.weight));
+      const best = Math.max(...targetHits.map(h => h.weight + (h.located ? LOCATED_BONUS : 0)));
       const distinct = new Set(targetHits.filter(h => h.weight === 1).map(h => h.phrase)).size;
       const bonus = Math.min(1, Math.max(0, distinct - 1) * 0.25);
       a.score += best * FIELD_WEIGHT[field.name] + bonus;
@@ -256,7 +295,9 @@ export function classify(input: ClassifyInput): Classification {
 
   // ── Places ──
   const pIndex = getPlaceIndex();
-  const placeAcc = accumulate(fields, scanHashtags(hashtags, pIndex, 5), pIndex);
+  // #realmadrid and #mysorepakrecipe aren't about Madrid or Mysore.
+  const placeTags = hashtags.filter(tag => !blockedKeys().some(key => tag.split('_').join('').includes(key)));
+  const placeAcc = accumulate(fields, scanHashtags(placeTags, pIndex, 5), pIndex, true);
   const places: PlaceMatch[] = [...placeAcc.entries()]
     .map(([i, a]) => ({ place: PLACES[i], score: round(a.score), matched: a.matched, firstIndex: a.firstIndex, order: i }))
     .filter(m => m.score >= (m.place.level === 1 ? COUNTRY_MIN_SCORE : PLACE_MIN_SCORE))

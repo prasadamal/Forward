@@ -188,9 +188,11 @@ export const TOPICS: TopicDef[] = [
     strong: [
       'cricket', 'ipl', 'rcb', 'csk', 'mi vs', 'football', 'soccer', 'f1', 'formula 1',
       'badminton', 'tennis', 'kabaddi', 'fifa', 'world cup', 'olympics', 'chess', 'wicket',
-      'stadium', 'tournament', 'pickleball', 'turf',
+      'stadium', 'tournament', 'pickleball', 'turf', 'premier league', 'la liga', 'champions league',
+      'el clasico', 'real madrid', 'fc barcelona', 'mumbai indians', 'chennai super kings',
+      'royal challengers', 'kolkata knight riders', 'sunrisers hyderabad', 'kerala blasters',
     ],
-    weak: ['match', 'score', 'goal', 'century', 'team', 'win', 'player'],
+    weak: ['match', 'score', 'goal', 'century', 'team', 'win', 'player', 'highlights'],
     domains: ['espncricinfo.com', 'cricbuzz.com', 'espn.com', 'fifa.com', 'formula1.com'],
   },
   {
