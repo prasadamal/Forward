@@ -72,7 +72,7 @@ export async function mergeFromAttached(db: SQLDatabase, schema: string, now: nu
   await db.transaction(async () => {
     await db.exec('PRAGMA defer_foreign_keys = ON;');
 
-    const existing = await db.all<FolderRow>('SELECT id, parent_id, name FROM main.folders');
+    const existing = await db.all<FolderRow & { smart_key?: string | null }>('SELECT id, parent_id, name, smart_key FROM main.folders');
     const existingIds = new Set(existing.map(f => f.id));
     const incoming = await db.all<FolderRow & Record<string, unknown>>(
       `SELECT id, parent_id, name, emoji, color, keywords, auto, smart_key, created_at, updated_at FROM ${schema}.folders`,
@@ -99,9 +99,13 @@ export async function mergeFromAttached(db: SQLDatabase, schema: string, now: nu
           idMap.set(f.id, f.id);
           continue;
         }
-        const twin = existing.find(
-          e => (e.parent_id ?? null) === mappedParent && e.name.trim().toLowerCase() === String(f.name).trim().toLowerCase(),
-        );
+        // A smart folder ("place:bangalore") is the same folder wherever the user moved it.
+        const smartKey = (f.smart_key as string | null) ?? null;
+        const twin =
+          (smartKey ? existing.find(e => e.smart_key === smartKey) : undefined) ??
+          existing.find(
+            e => (e.parent_id ?? null) === mappedParent && e.name.trim().toLowerCase() === String(f.name).trim().toLowerCase(),
+          );
         if (twin) {
           idMap.set(f.id, twin.id);
           continue;
@@ -122,7 +126,7 @@ export async function mergeFromAttached(db: SQLDatabase, schema: string, now: nu
             Number(f.updated_at ?? now),
           ],
         );
-        existing.push({ id: f.id, parent_id: mappedParent, name: f.name });
+        existing.push({ id: f.id, parent_id: mappedParent, name: f.name, smart_key: smartKey });
         existingIds.add(f.id);
         idMap.set(f.id, f.id);
         folders++;
@@ -157,13 +161,26 @@ export async function mergeFromAttached(db: SQLDatabase, schema: string, now: nu
        SELECT item_id, kind, mime, width, height, size, data FROM ${schema}.blobs
        WHERE item_id IN (SELECT id FROM main.items);`,
     );
+    // Items that existed already may have gained a thumbnail or file from the backup.
+    await db.exec(
+      `UPDATE main.items SET
+         has_thumb = EXISTS (SELECT 1 FROM main.blobs b WHERE b.item_id = main.items.id AND b.kind = 'thumb'),
+         has_blob = EXISTS (SELECT 1 FROM main.blobs b WHERE b.item_id = main.items.id AND b.kind = 'original')
+       WHERE id IN (SELECT item_id FROM ${schema}.blobs);`,
+    );
   });
   return { items, folders };
 }
 
 /** Restores an encrypted backup file into the open vault. */
 export async function importBackup(db: SQLDatabase, password: string, srcPath: string, now: number): Promise<MergeResult> {
-  await db.exec(`ATTACH DATABASE ${quotePath(srcPath)} AS bk KEY '${backupPassphrase(password)}';`);
+  try {
+    await db.exec(`ATTACH DATABASE ${quotePath(srcPath)} AS bk KEY '${backupPassphrase(password)}';`);
+  } catch (e) {
+    // SQLCipher reads the first page while attaching, so a wrong key fails here.
+    if (/not a database|NOTADB|encrypted/i.test(String(e instanceof Error ? e.message : e))) throw new WrongBackupPasswordError();
+    throw e;
+  }
   try {
     try {
       await db.get('SELECT count(*) AS n FROM bk.sqlite_master');

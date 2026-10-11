@@ -40,9 +40,12 @@ Face ID / fingerprint (optional) ──► Keychain/Keystore item               
 
 - **Locking.** The vault auto-locks after 0 s to 15 min in the background (default 1 min).
   Locking closes the database, zeroes the in-memory key, clears decrypted image caches and
-  temporary files, and wipes any secret still on the clipboard.
+  temporary files, and wipes any secret still on the clipboard (unless clearing is set to
+  Never). A picker or share sheet can hold the lock off for at most two minutes.
 - **Wrong passcodes.** Five tries, then waits of 30 s, 1 min, 5 min, 15 min and 1 h. The
-  counter lives in secure storage, so restarting the app doesn't reset it.
+  counter lives in secure storage, so restarting the app doesn't reset it. The waits use the
+  phone's clock, so someone who can change the clock can shorten them, but each try still
+  costs a full PBKDF2 run.
 - **Secrets.** Card numbers, CVVs, PINs, passwords and secure notes live in a separate
   column. They are loaded only when you open the item and confirm with Face ID, fingerprint or
   the device passcode, or with the Forward passcode on phones without a screen lock. Search
@@ -57,7 +60,7 @@ Face ID / fingerprint (optional) ──► Keychain/Keystore item               
 
 ## Leaving the device
 
-- **Backups** are a full SQLCipher copy (`sqlcipher_export`) encrypted with a separate backup
+- **Backups** need Face ID, fingerprint or the passcode to create, like showing a secret. They are a full SQLCipher copy (`sqlcipher_export`) encrypted with a separate backup
   password (PBKDF2-HMAC-SHA512, 256k rounds). Restoring merges into the current vault without
   duplicates.
 - **OS backups.** Android `allowBackup` is off. iOS device backups may contain `vault.db` and

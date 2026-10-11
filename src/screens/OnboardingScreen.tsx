@@ -95,8 +95,14 @@ export default function OnboardingScreen() {
 
   const enableBio = async () => {
     setBusy(true);
-    const ok = await setBiometrics(true);
-    setBusy(false);
+    let ok = false;
+    try {
+      ok = await setBiometrics(true);
+    } catch {
+      // e.g. the vault locked meanwhile; it can be turned on later in Settings.
+    } finally {
+      setBusy(false);
+    }
     if (!ok) setError(`${biometricLabel(support?.kind ?? 'none')} couldn’t be turned on. You can try again in Settings.`);
     setStep('done');
   };

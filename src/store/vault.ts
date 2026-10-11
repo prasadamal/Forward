@@ -23,6 +23,7 @@ import { autoFileItem, classifyInputFor } from '../organizer/fileItem';
 import { buildTree, uniqueChildName } from '../folders/tree';
 import { folderColor } from '../constants/palette';
 import { clearPendingSecret } from '../security/clipboard';
+import { withAutoLockSuspended } from '../security/autoLock';
 import { clearThumbCache } from './thumbs';
 import { normalizePhrase } from '../organizer/text';
 
@@ -119,6 +120,13 @@ function describeError(e: unknown): string {
 
 export const useVault = create<VaultStore>((set, get) => {
   /** Loads everything after a successful unlock. */
+  /** Never leave a half-open vault behind a "Something went wrong" screen. */
+  async function unlockFailed(key: Uint8Array, e: unknown) {
+    await closeSession();
+    key.fill(0);
+    set({ status: 'failed', failure: describeError(e), folders: [], items: [] });
+  }
+
   async function afterUnlock(key: Uint8Array) {
     const session = await openSession(key);
     const { repo } = session;
@@ -199,7 +207,14 @@ export const useVault = create<VaultStore>((set, get) => {
       // A vault file without a keyring is unreadable leftovers; start clean.
       await eraseEverything().catch(() => undefined);
       const key = await keyring.setup(passcode, kind);
-      await afterUnlock(key);
+      try {
+        await afterUnlock(key);
+      } catch (e) {
+        // Onboarding shows the error and offers to try again.
+        await closeSession();
+        key.fill(0);
+        throw e;
+      }
     },
 
     unlockWithPasscode: async passcode => {
@@ -208,7 +223,7 @@ export const useVault = create<VaultStore>((set, get) => {
         try {
           await afterUnlock(result.key);
         } catch (e) {
-          set({ status: 'failed', failure: describeError(e) });
+          await unlockFailed(result.key, e);
         }
       } else {
         set({ keyringState: await keyring.getState() });
@@ -227,7 +242,7 @@ export const useVault = create<VaultStore>((set, get) => {
         try {
           await afterUnlock(result.key);
         } catch (e) {
-          set({ status: 'failed', failure: describeError(e) });
+          await unlockFailed(result.key, e);
         }
       } else {
         set({ keyringState: await keyring.getState() });
@@ -237,10 +252,13 @@ export const useVault = create<VaultStore>((set, get) => {
 
     lock: async () => {
       if (get().status !== 'unlocked') return;
-      await clearPendingSecret();
+      // Hide everything first, in the same frame, then tidy up.
+      set({ status: 'locked', folders: [], items: [], revealUntil: 0 });
       clearThumbCache();
+      await clearPendingSecret();
       await closeSession();
-      set({ status: 'locked', folders: [], items: [], revealUntil: 0, keyringState: await keyring.getState() });
+      clearThumbCache();
+      set({ keyringState: await keyring.getState() });
     },
 
     eraseVault: async () => {
@@ -260,14 +278,26 @@ export const useVault = create<VaultStore>((set, get) => {
 
     setBiometrics: async enabled => {
       let ok = true;
-      if (enabled) ok = await keyring.enableBiometrics(getSession().key, 'Turn on quick unlock');
+      if (enabled) {
+        const key = getSession().key.slice();
+        try {
+          ok = await withAutoLockSuspended(() => keyring.enableBiometrics(key, 'Turn on quick unlock'));
+        } finally {
+          key.fill(0);
+        }
+      }
       else await keyring.disableBiometrics();
       set({ keyringState: await keyring.getState() });
       return ok;
     },
 
     changePasscode: async (passcode, kind) => {
-      await keyring.changePasscode(getSession().key, passcode, kind);
+      const key = getSession().key.slice();
+      try {
+        await withAutoLockSuspended(() => keyring.changePasscode(key, passcode, kind));
+      } finally {
+        key.fill(0);
+      }
       set({ keyringState: await keyring.getState() });
     },
 

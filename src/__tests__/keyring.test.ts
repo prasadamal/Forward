@@ -14,7 +14,7 @@ import { randomBytes } from 'crypto';
 
 class FakeKV implements SecureKV {
   store = new Map<string, string>();
-  authBehaviour: 'ok' | 'cancel' | 'invalidated' | 'fail-set' = 'ok';
+  authBehaviour: 'ok' | 'cancel' | 'invalidated' | 'fail-set' | 'lockout' = 'ok';
   prompts: string[] = [];
 
   async get(key: string, o?: SecureKVOptions) {
@@ -22,6 +22,7 @@ class FakeKV implements SecureKV {
       this.prompts.push(o.prompt ?? '');
       if (this.authBehaviour === 'cancel') throw new AuthCancelledError();
       if (this.authBehaviour === 'invalidated') return null;
+      if (this.authBehaviour === 'lockout') throw new Error('Too many attempts');
     }
     return this.store.get(key) ?? null;
   }
@@ -162,6 +163,31 @@ describe('Keyring', () => {
     expect(await keyring.unlockWithBiometrics('x')).toEqual({ ok: false, reason: 'invalidated' });
     expect((await keyring.getState())?.biometrics).toBe(false);
     // Passcode still works.
+    expect((await keyring.unlockWithPasscode('482913')).ok).toBe(true);
+  });
+
+  it('treats other biometric errors as temporary, and drops an invalidated key', async () => {
+    const { keyring, kv } = setup();
+    const key = await keyring.setup('482913', 'pin');
+    await keyring.enableBiometrics(key, 'Enable');
+    kv.authBehaviour = 'lockout';
+    expect(await keyring.unlockWithBiometrics('x')).toEqual({ ok: false, reason: 'unavailable' });
+    expect((await keyring.getState())?.biometrics).toBe(true);
+    kv.authBehaviour = 'invalidated';
+    await keyring.unlockWithBiometrics('x');
+    expect(kv.store.has(KEYS.bioKey)).toBe(false);
+    // Turning it back on works.
+    kv.authBehaviour = 'ok';
+    expect(await keyring.enableBiometrics(key, 'Enable')).toBe(true);
+    expect((await keyring.unlockWithBiometrics('x')).ok).toBe(true);
+  });
+
+  it('refuses to store a zeroed key (the vault locked mid-change)', async () => {
+    const { keyring } = setup();
+    const key = await keyring.setup('482913', 'pin');
+    const zero = new Uint8Array(key.length);
+    await expect(keyring.changePasscode(zero, '739104', 'pin')).rejects.toThrow('Vault is locked');
+    expect(await keyring.enableBiometrics(zero, 'Enable')).toBe(false);
     expect((await keyring.unlockWithPasscode('482913')).ok).toBe(true);
   });
 

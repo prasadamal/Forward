@@ -10,6 +10,12 @@ import { AppState, AppStateStatus } from 'react-native';
 
 let suspended = 0;
 
+/**
+ * A picker or share sheet can only hold the lock off this long. Leaving the app
+ * with one open (or the sheet never resolving) still locks the vault.
+ */
+export const MAX_SUSPENDED_MS = 2 * 60 * 1000;
+
 export function suspendAutoLock(): void {
   suspended++;
 }
@@ -49,16 +55,20 @@ export function useAutoLock({ enabled, seconds, lock, onForeground }: AutoLockOp
     const onChange = (state: AppStateStatus) => {
       const { enabled: on, seconds: delay, lock: doLock, onForeground: fg } = latest.current;
       if (state === 'background') {
-        if (!on || isAutoLockSuspended()) {
+        if (!on) {
           backgroundAt.current = null;
           return;
         }
         backgroundAt.current = Date.now();
-        if (delay === 0) doLock();
+        if (delay === 0 && !isAutoLockSuspended()) doLock();
       } else if (state === 'active') {
         const since = backgroundAt.current;
         backgroundAt.current = null;
-        if (on && since !== null && Date.now() - since >= delay * 1000) doLock();
+        if (on && since !== null) {
+          const away = Date.now() - since;
+          const heldOff = isAutoLockSuspended() && away < MAX_SUSPENDED_MS;
+          if (!heldOff && away >= delay * 1000) doLock();
+        }
         fg?.();
       }
     };

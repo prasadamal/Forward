@@ -196,6 +196,7 @@ export class Keyring {
       const keyHex = await this.deps.kv.get(KEYS.bioKey, { requireAuth: true, prompt });
       if (!keyHex) {
         // The OS dropped the key (e.g. fingerprints or Face ID were changed).
+        await this.deps.kv.remove(KEYS.bioKey, { requireAuth: true }).catch(() => undefined);
         await this.saveState({ ...state, biometrics: false });
         return { ok: false, reason: 'invalidated' };
       }
@@ -205,16 +206,21 @@ export class Keyring {
       return { ok: true, key: hexToBytes(keyHex) };
     } catch (e) {
       if (e instanceof AuthCancelledError) return { ok: false, reason: 'cancelled' };
-      return { ok: false, reason: 'invalidated' };
+      // Too many tries, app in the background, sensor busy…: try again later or use the passcode.
+      return { ok: false, reason: 'unavailable' };
     }
   }
 
   /** Stores a copy of the vault key behind biometrics. Requires an unlocked vault. */
   async enableBiometrics(key: Uint8Array, prompt: string): Promise<boolean> {
+    const keyHex = bytesToHex(key);
+    if (/^0+$/.test(keyHex)) return false;
     const state = await this.getState();
     if (!state) return false;
     try {
-      await this.deps.kv.set(KEYS.bioKey, bytesToHex(key), { requireAuth: true, prompt });
+      // A copy left from an earlier enrolment would block the new one on iOS.
+      await this.deps.kv.remove(KEYS.bioKey, { requireAuth: true }).catch(() => undefined);
+      await this.deps.kv.set(KEYS.bioKey, keyHex, { requireAuth: true, prompt });
       await this.saveState({ ...state, biometrics: true });
       return true;
     } catch {
@@ -232,9 +238,12 @@ export class Keyring {
   async changePasscode(key: Uint8Array, passcode: string, kind: PasscodeKind): Promise<void> {
     const problem = validatePasscode(passcode, kind);
     if (problem) throw new Error(problem);
+    // Read the key before any await: locking meanwhile zeroes the session's copy.
+    const keyHex = bytesToHex(key);
+    if (/^0+$/.test(keyHex)) throw new Error('Vault is locked');
     const [state, pepperHex] = await Promise.all([this.getState(), this.deps.kv.get(KEYS.pepper)]);
     if (!state || !pepperHex) throw new Error('Vault is not set up');
-    await this.deps.file.write(keyringPassphrase(passcode, pepperHex), bytesToHex(key));
+    await this.deps.file.write(keyringPassphrase(passcode, pepperHex), keyHex);
     await this.saveState({ ...state, passcodeKind: kind, failedAttempts: 0, lockedUntil: 0 });
   }
 

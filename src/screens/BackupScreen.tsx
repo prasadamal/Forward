@@ -10,6 +10,7 @@ import { passwordStrength } from '../wallet/passwords';
 import { space, useTheme } from '../theme';
 import { Button, Card, Header, Screen, Scroll, TextField, Txt } from '../ui/primitives';
 import { toast } from '../ui/Toast';
+import { useReveal } from '../ui/useReveal';
 
 export default function BackupScreen() {
   const { c } = useTheme();
@@ -24,6 +25,8 @@ export default function BackupScreen() {
   const [file, setFile] = useState<{ uri: string; name: string } | null>(null);
   const [restorePassword, setRestorePassword] = useState('');
   const [restoring, setRestoring] = useState(false);
+  // A backup contains every card number and password, so it's gated like showing one.
+  const { ensure, prompt } = useReveal('Back up your vault');
 
   const strength = passwordStrength(password);
   const exportError =
@@ -35,6 +38,7 @@ export default function BackupScreen() {
 
   const doExport = async () => {
     if (exportError || !password || confirm !== password) return;
+    if (!(await ensure())) return;
     setExporting(true);
     let uri: string | null = null;
     try {
@@ -155,6 +159,7 @@ export default function BackupScreen() {
           </Card>
         </Scroll>
       </KeyboardAvoidingView>
+      {prompt}
     </Screen>
   );
 }

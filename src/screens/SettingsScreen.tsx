@@ -15,6 +15,7 @@ import { space, useTheme } from '../theme';
 import { Header, ListRow, Screen, Scroll, Section, Txt } from '../ui/primitives';
 import { ChoiceSheet } from '../ui/ChoiceSheet';
 import { toast } from '../ui/Toast';
+import { useReveal } from '../ui/useReveal';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -45,6 +46,7 @@ export default function SettingsScreen() {
   const items = useVault(s => s.items);
   const folders = useVault(s => s.folders);
   const updateSettings = useVault(s => s.updateSettings);
+  const { ensure, prompt } = useReveal('Turn off confirmation for secrets');
   const setBiometrics = useVault(s => s.setBiometrics);
   const lock = useVault(s => s.lock);
   const eraseVault = useVault(s => s.eraseVault);
@@ -113,7 +115,10 @@ export default function SettingsScreen() {
               subtitle="Card numbers, CVVs and passwords"
               icon="eye-off-outline"
               switchValue={settings.revealNeedsAuth}
-              onSwitch={v => void updateSettings({ revealNeedsAuth: v })}
+              onSwitch={async v => {
+                if (!v && !(await ensure())) return;
+                void updateSettings({ revealNeedsAuth: v });
+              }}
             />
             <ListRow
               title="Block screenshots"
@@ -230,6 +235,7 @@ export default function SettingsScreen() {
         onChoose={v => void setTheme(v)}
         onClose={() => setSheet(null)}
       />
+      {prompt}
     </Screen>
   );
 }

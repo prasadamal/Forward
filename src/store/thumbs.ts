@@ -24,7 +24,11 @@ function remember(key: string, uri: string) {
 export function clearThumbCache(): void {
   cache.clear();
   inflight.clear();
+  generation++;
 }
+
+/** Bumped on every clear, so a load that finishes after locking isn't cached. */
+let generation = 0;
 
 export function forgetImage(itemId: string): void {
   for (const key of [...cache.keys()]) if (key.startsWith(`${itemId}:`)) cache.delete(key);
@@ -36,9 +40,11 @@ export async function loadImageUri(itemId: string, kind: BlobKind): Promise<stri
   if (hit) return hit;
   const pending = inflight.get(key);
   if (pending) return pending;
+  const started = generation;
   const task = (async () => {
     if (!hasSession()) return null;
     const blob = await getSession().repo.getBlob(itemId, kind);
+    if (generation !== started || !hasSession()) return null;
     if (!blob || !blob.mime.startsWith('image/')) return null;
     const uri = dataUri(blob.mime, blob.data);
     // Full-size images are large; only cache thumbnails long-term.

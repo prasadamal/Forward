@@ -53,7 +53,8 @@ function Shell() {
   useShareIntake(useCallback((share: IncomingShare) => enqueueShare(share), [enqueueShare]));
 
   useAutoLock({
-    enabled: status === 'unlocked',
+    // Not during onboarding: locking there would strand the biometrics step.
+    enabled: status === 'unlocked' && !onboarding,
     seconds: settings.autoLockSeconds,
     lock: () => void lock(),
     onForeground: () => void flushClipboard(),

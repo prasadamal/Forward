@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, AppState, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useVault } from '../store/vault';
@@ -58,10 +58,20 @@ export default function LockScreen() {
   }, [bioEnabled, busy, unlockWithBiometrics, bioKind]);
 
   useEffect(() => {
-    if (bioEnabled && !autoPrompted.current && lockedFor === 0) {
+    if (!bioEnabled || autoPrompted.current || lockedFor > 0) return;
+    const prompt = () => {
       autoPrompted.current = true;
       void tryBiometrics();
+    };
+    // Locking happens in the background; the OS refuses biometric prompts until we're back.
+    if (AppState.currentState === 'active') {
+      prompt();
+      return;
     }
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active' && !autoPrompted.current) prompt();
+    });
+    return () => sub.remove();
   }, [bioEnabled, lockedFor, tryBiometrics]);
 
   const submit = async (passcode: string) => {
