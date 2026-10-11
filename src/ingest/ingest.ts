@@ -56,10 +56,10 @@ async function saveDraft(draft: ItemDraft, deps: IngestDeps, folderId?: string):
         });
       }
     } catch (e) {
+      deps.deleteImportedCopy(file.uri);
+      if (file.thumbnailUri) deps.deleteImportedCopy(file.thumbnailUri);
       const reason = e instanceof FileTooLargeError ? 'too-large' : 'unreadable';
       return { status: 'failed', reason, name: file.name };
-    } finally {
-      deps.deleteImportedCopy(file.uri);
     }
   }
 
@@ -87,10 +87,18 @@ async function saveDraft(draft: ItemDraft, deps: IngestDeps, folderId?: string):
         : {}),
     },
     blobs,
+  }).finally(() => {
+    // The plaintext copy goes once its bytes are in the vault (or the save failed).
+    if (file) deps.deleteImportedCopy(file.uri);
+    if (file?.thumbnailUri) deps.deleteImportedCopy(file.thumbnailUri);
   });
 
   if (!folderId && deps.settings().autoFile) {
-    await autoFileItem(repo, item.id, classifyInputFor(item, { hint: draft.hint }));
+    try {
+      await autoFileItem(repo, item.id, classifyInputFor(item, { hint: draft.hint }));
+    } catch {
+      // Saved, just not sorted: it waits in the Inbox. Don't report a failure (and invite a duplicate).
+    }
   }
   return { status: 'saved', itemId: item.id, type: item.type };
 }

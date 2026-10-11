@@ -1,8 +1,18 @@
 diff --git a/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt b/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
-index 0153c89..61ee832 100644
+index 0153c89..bb118c5 100644
 --- a/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
 +++ b/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
-@@ -130,6 +130,7 @@ class ExpoShareIntentModule : Module() {
+@@ -122,7 +122,8 @@ class ExpoShareIntentModule : Module() {
+                 return
+             }
+             if (intent.type == null) return
+-            if (intent.type!!.startsWith("text/plain")) {
++            // A shared .txt file is text/plain too, but arrives as a stream, not EXTRA_TEXT.
++            if (intent.type!!.startsWith("text/plain") && !intent.hasExtra(Intent.EXTRA_STREAM)) {
+                 // text / urls
+                 if (intent.action == Intent.ACTION_SEND) {
+                     notifyShareIntent(mapOf(
+@@ -130,6 +131,7 @@ class ExpoShareIntentModule : Module() {
                          "type" to "text",
                          "meta" to mapOf(
                              "title" to intent.getCharSequenceExtra(Intent.EXTRA_TITLE),
@@ -10,7 +20,7 @@ index 0153c89..61ee832 100644
                          )
                      ))
                  } else if (intent.action == Intent.ACTION_VIEW) {
-@@ -142,14 +143,28 @@ class ExpoShareIntentModule : Module() {
+@@ -142,14 +144,28 @@ class ExpoShareIntentModule : Module() {
                  if (intent.action == Intent.ACTION_SEND) {
                      val uri = intent.parcelable<Uri>(Intent.EXTRA_STREAM);
                      if (uri != null) {
@@ -41,3 +51,22 @@ index 0153c89..61ee832 100644
                      } else {
                          notifyError("empty uris array for file sharing: " + intent.action)
                      }
+diff --git a/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentReactActivityLifecycleListener.kt b/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentReactActivityLifecycleListener.kt
+index db573ec..9006a0a 100644
+--- a/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentReactActivityLifecycleListener.kt
++++ b/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentReactActivityLifecycleListener.kt
+@@ -13,8 +13,12 @@ import expo.modules.core.interfaces.ReactActivityLifecycleListener
+ class ExpoShareIntentReactActivityLifecycleListener(activityContext: Context) : ReactActivityLifecycleListener {
+ 
+     override fun onCreate(activity: Activity?, savedInstanceState: Bundle?) {
+-        // only store when the new intent is not empty
+-        if (activity?.intent?.type != null) {
++        // only store when the new intent is not empty, and not when Android re-delivers an
++        // old share (reopened from Recents, or the process restored after being killed)
++        val intent = activity?.intent
++        val replayed = savedInstanceState != null ||
++            (intent != null && (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0)
++        if (intent?.type != null && !replayed) {
+             ExpoShareIntentSingleton.intent = activity?.intent
+             ExpoShareIntentSingleton.isPending = true
+         }

@@ -1,5 +1,6 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import type { ImageRef } from 'expo-image-manipulator';
 import { StoredBlob } from '../types';
 import { newId } from '../utils/ids';
 import { FileTooLargeError, MAX_FILE_BYTES, PreparedImage } from './mediaTypes';
@@ -77,10 +78,18 @@ async function scaled(
   height: number | undefined,
   compress: number,
 ): Promise<{ blob: StoredBlob; tmpUri: string }> {
-  const ctx = ImageManipulator.manipulate(uri);
-  const landscape = (width ?? 1) >= (height ?? 1);
-  if (!width || !height || Math.max(width, height) > maxSide) {
-    ctx.resize(landscape ? { width: maxSide } : { height: maxSide });
+  let source: string | ImageRef = uri;
+  if (!width || !height) {
+    // Unknown size (e.g. a downloaded thumbnail): decode first rather than guess,
+    // which used to blow small images up to maxSide.
+    const probe = await ImageManipulator.manipulate(uri).renderAsync();
+    width = probe.width;
+    height = probe.height;
+    source = probe;
+  }
+  const ctx = ImageManipulator.manipulate(source);
+  if (Math.max(width, height) > maxSide) {
+    ctx.resize(width >= height ? { width: maxSide } : { height: maxSide });
   }
   const image = await ctx.renderAsync();
   const saved = await image.saveAsync({ format: SaveFormat.JPEG, compress });

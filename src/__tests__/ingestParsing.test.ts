@@ -56,6 +56,30 @@ describe('parseNativeShare', () => {
     expect(ios.files[0]).toMatchObject({ uri: 'file:///private/var/group/x/meme.gif', mimeType: 'image/gif' });
   });
 
+  it('reads Android files from content:// when the path is outside our cache, and encodes names', () => {
+    const share = parseNativeShare(
+      {
+        files: [
+          {
+            filePath: '/storage/emulated/0/Download/Invoice #12.pdf',
+            contentUri: 'content://com.android.externalstorage.documents/document/primary%3ADownload%2FInvoice%20%2312.pdf',
+            fileName: 'Invoice #12.pdf',
+            mimeType: 'application/pdf',
+          },
+          { filePath: '/data/user/0/app/cache/Trip plan #2.pdf', contentUri: 'content://x/2', mimeType: 'application/pdf' },
+        ],
+        type: 'file',
+      },
+      'c',
+    )!;
+    expect(share.files[0].uri).toBe(
+      'content://com.android.externalstorage.documents/document/primary%3ADownload%2FInvoice%20%2312.pdf',
+    );
+    expect(share.files[0].name).toBe('Invoice #12.pdf');
+    expect(share.files[1].uri).toBe('file:///data/user/0/app/cache/Trip%20plan%20%232.pdf');
+    expect(share.files[1].name).toBe('Trip plan #2.pdf');
+  });
+
   it('returns null for empty or malformed payloads', () => {
     expect(parseNativeShare('not json', 'x')).toBeNull();
     expect(parseNativeShare({ type: 'text' }, 'x')).toBeNull();

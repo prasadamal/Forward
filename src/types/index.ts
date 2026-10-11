@@ -207,6 +207,8 @@ export interface IncomingFile {
   width?: number;
   height?: number;
   durationMs?: number;
+  /** A preview frame the iOS share extension wrote next to a video; deleted with it. */
+  thumbnailUri?: string;
 }
 
 /** Everything another app forwarded to us in one share action. */

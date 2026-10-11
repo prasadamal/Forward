@@ -1,6 +1,7 @@
 import { SqlJsDatabase } from '../testing/sqljsDatabase';
 import { configureConnection, migrate, SCHEMA_VERSION } from '../db/schema';
 import { VaultRepository } from '../db/repository';
+import { autoFileItem } from '../organizer/fileItem';
 import { DEFAULT_SETTINGS } from '../types';
 
 let db: SqlJsDatabase;
@@ -230,5 +231,35 @@ describe('settings & meta', () => {
     expect(await repo.getMeta('createdAt')).toBeNull();
     await repo.setMeta('createdAt', '123');
     expect(await repo.getMeta('createdAt')).toBe('123');
+  });
+});
+
+describe('filing races', () => {
+  it('lets a hand-picked folder win over a slower auto-filer, and cleans up its folders', async () => {
+    const recipes = await repo.createFolder({ parentId: null, name: 'Recipes', emoji: '🍲' });
+    const item = await repo.createItem({ type: 'link', title: 'Best biryani in Bangalore', text: '', source: 'web', filing: 'auto' });
+    // The user picks a folder while the link preview is still loading…
+    await repo.setItemFolders(item.id, [recipes.id], { filing: 'manual' });
+    // …then the auto-filer finishes.
+    await autoFileItem(repo, item.id, { title: item.title });
+    const after = await repo.getItem(item.id);
+    expect(after?.folderIds).toEqual([recipes.id]);
+    expect(after?.filing).toBe('manual');
+    expect((await repo.listFolders()).map(f => f.name)).toEqual(['Recipes']);
+  });
+
+  it('skips folders deleted while a save was pending', async () => {
+    const gone = await repo.createFolder({ parentId: null, name: 'Gone', emoji: '📁' });
+    await repo.deleteFolder(gone.id, 'keep');
+    const item = await repo.createItem({ type: 'note', title: 'Kept', text: '', source: 'manual', folderIds: [gone.id] });
+    expect((await repo.getItem(item.id))?.folderIds).toEqual([]);
+  });
+
+  it('only prunes an auto folder that is still empty', async () => {
+    const auto = await repo.createFolder({ parentId: null, name: 'Goa', emoji: '🏖️', auto: true });
+    await repo.createItem({ type: 'note', title: 'x', text: '', source: 'manual', folderIds: [auto.id] });
+    expect(await repo.deleteFolderIfEmpty(auto.id)).toBe(false);
+    const empty = await repo.createFolder({ parentId: null, name: 'Empty', emoji: '📁', auto: true });
+    expect(await repo.deleteFolderIfEmpty(empty.id)).toBe(true);
   });
 });

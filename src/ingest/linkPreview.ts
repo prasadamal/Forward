@@ -149,6 +149,8 @@ async function youtubePreview(url: string, fetchFn: FetchFn, timeoutMs: number):
     'application/json',
   );
   const out: LinkPreview = { siteName: 'YouTube' };
+  // Offline: return nothing, so the link is retried instead of marked as previewed.
+  if (!res) return out;
   if (id) out.imageUrl = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
   if (res) {
     try {

@@ -48,7 +48,13 @@ export function autoFileItem(repo: VaultRepository, itemId: string, input: Class
       createdFolderIds.push(folder.id);
     }
     const folderIds = plan.targets.map(t => keyToId.get(t) ?? t);
-    await repo.setItemFolders(itemId, folderIds);
+    const applied = await repo.setItemFolders(itemId, folderIds, { onlyIfAuto: true });
+    if (!applied) {
+      // The user filed it by hand meanwhile; keep their choice and undo our new folders.
+      await pruneNow(repo, createdFolderIds);
+      const current = await repo.getItem(itemId);
+      return { folderIds: current?.folderIds ?? [], createdFolderIds: [], tags: current?.tags ?? [] };
+    }
     await repo.updateItem(itemId, { tags: c.tags });
     return { folderIds, createdFolderIds, tags: c.tags };
   });
@@ -58,21 +64,20 @@ export function autoFileItem(repo: VaultRepository, itemId: string, input: Class
  * After re-filing, folders the auto-filer created that are now completely
  * empty (no items, no subfolders) are removed again.
  */
-export async function pruneEmptyAutoFolders(repo: VaultRepository, candidateIds: string[]): Promise<string[]> {
+export function pruneEmptyAutoFolders(repo: VaultRepository, candidateIds: string[]): Promise<string[]> {
+  // In the filing queue, so it can't delete a folder another item is being filed into.
+  return queue.run(() => pruneNow(repo, candidateIds));
+}
+
+async function pruneNow(repo: VaultRepository, candidateIds: string[]): Promise<string[]> {
   const removed: string[] = [];
   for (const id of candidateIds) {
     const folder = await repo.getFolder(id);
     if (!folder?.auto) continue;
-    const used = await repo.db.get<{ n: number }>(
-      `SELECT (SELECT COUNT(*) FROM item_folders WHERE folder_id = ?) +
-              (SELECT COUNT(*) FROM folders WHERE parent_id = ?) AS n`,
-      [id, id],
-    );
-    if ((used?.n ?? 0) === 0) {
-      await repo.deleteFolder(id, 'keep');
+    if (await repo.deleteFolderIfEmpty(id)) {
       removed.push(id);
       // Its parent may now be empty too.
-      if (folder.parentId) removed.push(...(await pruneEmptyAutoFolders(repo, [folder.parentId])));
+      if (folder.parentId) removed.push(...(await pruneNow(repo, [folder.parentId])));
     }
   }
   return removed;

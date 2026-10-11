@@ -380,11 +380,12 @@ export class VaultRepository {
           ],
         );
         for (const fid of folderIds) {
-          await this.db.run('INSERT OR IGNORE INTO item_folders (item_id, folder_id, added_at) VALUES (?, ?, ?)', [
-            id,
-            fid,
-            now,
-          ]);
+          // A folder deleted meanwhile (e.g. while a share was queued) is skipped, not an error.
+          await this.db.run(
+            `INSERT OR IGNORE INTO item_folders (item_id, folder_id, added_at)
+             SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM folders WHERE id = ?)`,
+            [id, fid, now, fid],
+          );
         }
         for (const b of input.blobs ?? []) await this.insertBlob(id, b.kind, b.blob);
       });
@@ -422,11 +423,28 @@ export class VaultRepository {
     });
   }
 
-  /** Replaces the item's folders. */
-  setItemFolders(id: string, folderIds: string[]): Promise<void> {
+  /**
+   * Replaces the item's folders, and optionally its filing mode in the same write.
+   * With `onlyIfAuto`, nothing changes if the user has filed the item by hand
+   * (the auto-filer must never overwrite a choice made while it was working).
+   * Returns false when skipped.
+   */
+  setItemFolders(
+    id: string,
+    folderIds: string[],
+    opts: { filing?: Item['filing']; onlyIfAuto?: boolean } = {},
+  ): Promise<boolean> {
     return this.write(async () => {
       const unique = [...new Set(folderIds)];
+      let applied = true;
       await this.db.transaction(async () => {
+        if (opts.onlyIfAuto) {
+          const row = await this.db.get<{ filing: string }>('SELECT filing FROM items WHERE id = ?', [id]);
+          if (row?.filing !== 'auto') {
+            applied = false;
+            return;
+          }
+        }
         if (unique.length) {
           await this.db.run(
             `DELETE FROM item_folders WHERE item_id = ? AND folder_id NOT IN (${placeholders(unique.length)})`,
@@ -437,14 +455,31 @@ export class VaultRepository {
         }
         const now = this.deps.now();
         for (const fid of unique) {
-          await this.db.run('INSERT OR IGNORE INTO item_folders (item_id, folder_id, added_at) VALUES (?, ?, ?)', [
-            id,
-            fid,
-            now,
-          ]);
+          // A folder deleted meanwhile (e.g. while a share was queued) is skipped, not an error.
+          await this.db.run(
+            `INSERT OR IGNORE INTO item_folders (item_id, folder_id, added_at)
+             SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM folders WHERE id = ?)`,
+            [id, fid, now, fid],
+          );
         }
         await this.db.run('UPDATE items SET updated_at = ? WHERE id = ?', [now, id]);
+        if (opts.filing) await this.db.run('UPDATE items SET filing = ? WHERE id = ?', [opts.filing, id]);
       });
+      return applied;
+    });
+  }
+
+  /** Deletes an auto-created folder only if it is still empty when the write runs. */
+  deleteFolderIfEmpty(id: string): Promise<boolean> {
+    return this.write(async () => {
+      const used = await this.db.get<{ n: number }>(
+        `SELECT (SELECT COUNT(*) FROM item_folders WHERE folder_id = ?) +
+                (SELECT COUNT(*) FROM folders WHERE parent_id = ?) AS n`,
+        [id, id],
+      );
+      if ((used?.n ?? 0) > 0) return false;
+      const result = await this.db.run('DELETE FROM folders WHERE id = ?', [id]);
+      return result.changes > 0;
     });
   }
 

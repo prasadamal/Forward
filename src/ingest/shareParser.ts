@@ -74,18 +74,32 @@ export function baseName(uri: string): string {
 
 function toFileUri(path: string): string {
   if (/^[a-z][a-z0-9+.-]*:/i.test(path)) return path;
-  return `file://${path.startsWith('/') ? '' : '/'}${path}`;
+  // Encode each segment: "Invoice #12.pdf" would otherwise be cut at "#".
+  const encoded = path
+    .split('/')
+    .map(seg => encodeURIComponent(seg))
+    .join('/');
+  return `file://${path.startsWith('/') ? '' : '/'}${encoded}`;
 }
+
+/** Copies the share extension or share-intent module made for us, which we may read and delete. */
+const APP_COPY = /\/(cache|caches)\/|appgroup|\/group\./i;
 
 function parseFile(raw: unknown): IncomingFile | null {
   if (!raw || typeof raw !== 'object') return null;
   const f = raw as Raw;
-  const path = str(f.path) ?? str(f.filePath) ?? str(f.contentUri);
+  // Android also gives the original location (e.g. /storage/emulated/0/…), which we
+  // can't read without storage permission; its content:// URI is readable.
+  const local = str(f.path) ?? str(f.filePath);
+  const content = str(f.contentUri);
+  const path = local && (!content || APP_COPY.test(local)) ? local : content ?? local;
   if (!path) return null;
   const uri = toFileUri(path);
   const name = str(f.fileName) ?? baseName(uri);
   const mime = str(f.mimeType);
+  const thumbnail = str(f.thumbnail);
   return {
+    ...(thumbnail ? { thumbnailUri: toFileUri(thumbnail) } : {}),
     uri,
     name,
     mimeType: mime && mime !== '*/*' ? mime : mimeFromName(name),

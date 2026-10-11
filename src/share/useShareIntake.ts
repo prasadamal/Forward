@@ -51,25 +51,29 @@ export function useShareIntake(onShare: (share: IncomingShare) => void): void {
     };
   }, []);
 
+  // iOS: each share arrives as a new forward://dataUrl=… link. Read each link once;
+  // re-reading an old link after the next share was written can crash the module.
+  const handledUrls = useRef(new Set<string>());
   useEffect(() => {
     const mod = ShareIntentModule;
-    if (!mod) return;
+    if (!mod || Platform.OS !== 'ios' || !url) return;
+    const scheme = getScheme({});
+    if (!scheme || !url.includes(`${scheme}://dataUrl=`) || handledUrls.current.has(url)) return;
+    handledUrls.current.add(url);
+    Promise.resolve(mod.getShareIntent(url)).catch(e => console.warn('[share] read failed', e));
+  }, [url]);
+
+  // Android: the native module holds the latest share Intent until asked.
+  useEffect(() => {
+    const mod = ShareIntentModule;
+    if (!mod || Platform.OS !== 'android') return;
     const refresh = () => {
-      try {
-        if (Platform.OS === 'ios') {
-          const scheme = getScheme({});
-          if (url && scheme && url.includes(`${scheme}://dataUrl=`)) mod.getShareIntent(url);
-        } else if (Platform.OS === 'android') {
-          mod.getShareIntent('');
-        }
-      } catch (e) {
-        console.warn('[share] refresh failed', e);
-      }
+      Promise.resolve(mod.getShareIntent('')).catch(e => console.warn('[share] refresh failed', e));
     };
     refresh();
     const sub = AppState.addEventListener('change', state => {
       if (state === 'active') refresh();
     });
     return () => sub.remove();
-  }, [url]);
+  }, []);
 }

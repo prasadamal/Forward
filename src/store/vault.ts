@@ -373,8 +373,7 @@ export const useVault = create<VaultStore>((set, get) => {
 
     setItemFolders: async (id, folderIds) => {
       const { repo } = getSession();
-      await repo.setItemFolders(id, folderIds);
-      await repo.updateItem(id, { filing: 'manual' });
+      await repo.setItemFolders(id, folderIds, { filing: 'manual' });
       await refreshItem(id);
     },
 
@@ -445,7 +444,8 @@ export const useVault = create<VaultStore>((set, get) => {
 
     processShare: async share => {
       const deps = ingestDeps(get);
-      const outcomes = await ingestShare(share, deps);
+      // Saving reads and deletes temporary copies; don't let auto-lock close the vault halfway.
+      const outcomes = await withAutoLockSuspended(() => ingestShare(share, deps));
       await get().reload();
       for (const o of outcomes) {
         if (o.status === 'saved' && o.type === 'link') get().enrich(o.itemId);
