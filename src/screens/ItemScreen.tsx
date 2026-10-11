@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -99,6 +99,20 @@ export default function ItemScreen() {
 
   // Forget decrypted secrets when leaving or when the item changes.
   useEffect(() => () => setSecret(null), [itemId]);
+  // After an edit, show the new values rather than the ones decrypted before it.
+  const updatedAt = item?.updatedAt;
+  const revealedRef = useRef(revealed);
+  revealedRef.current = revealed;
+  useEffect(() => {
+    if (!revealedRef.current) return;
+    let alive = true;
+    getSecret(itemId)
+      .then(s => alive && setSecret(s))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [itemId, updatedAt, getSecret]);
 
   if (!item) {
     return (

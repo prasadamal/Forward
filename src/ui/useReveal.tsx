@@ -51,6 +51,7 @@ function PasscodePromptSheet({ visible, onDone }: { visible: boolean; onDone: (o
   const { c } = useTheme();
   const kind = useVault(s => s.keyringState?.passcodeKind ?? 'pin');
   const verifyPasscode = useVault(s => s.verifyPasscode);
+  const passcodeProblem = useVault(s => s.passcodeProblem);
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -64,7 +65,7 @@ function PasscodePromptSheet({ visible, onDone }: { visible: boolean; onDone: (o
       setError(null);
       onDone(true);
     } else {
-      setError('Wrong passcode');
+      setError(passcodeProblem());
     }
   };
 

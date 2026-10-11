@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { RouteProp, useNavigation, usePreventRemove, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { INBOX, PINNED, RootStackParamList, TRASH } from '../navigation/types';
 import { useVault } from '../store/vault';
@@ -77,6 +77,10 @@ export default function FolderScreen() {
     return m;
   }, [items]);
   const shown = typeFilter === 'all' ? items : items.filter(i => i.type === typeFilter);
+  const descendants = useMemo(() => new Set(folder ? getDescendantIds(tree, folder.id) : []), [folder, tree]);
+
+  // Android back clears a selection before it leaves the folder.
+  usePreventRemove(selecting, () => setSelected([]));
 
   if (!folder && !isVirtual) {
     return (
@@ -98,7 +102,7 @@ export default function FolderScreen() {
 
   const relativeLabel = (item: Item) => {
     if (!folder) return item.folderIds.length ? pathLabel(tree, item.folderIds[0]) : 'Inbox';
-    const inside = item.folderIds.find(id => id !== folder.id && getDescendantIds(tree, folder.id).includes(id));
+    const inside = item.folderIds.find(id => id !== folder.id && descendants.has(id));
     return inside ? pathLabel(tree, inside).split(' › ').slice(-1)[0] : undefined;
   };
 
@@ -225,7 +229,8 @@ export default function FolderScreen() {
               </View>
             ) : null}
 
-            {items.length ? (
+            {/* Keep the row while "This folder only" hides everything, so it can be turned back. */}
+            {items.length || (folder && subfolders.length && !includeSub) ? (
               <FlatList
                 horizontal
                 data={TYPE_FILTERS.filter(f => f.key === 'all' || typeCounts.get(f.key))}
@@ -237,7 +242,10 @@ export default function FolderScreen() {
                     label={f.label}
                     selected={typeFilter === f.key}
                     count={f.key === 'all' ? undefined : typeCounts.get(f.key)}
-                    onPress={() => setTypeFilter(f.key)}
+                    onPress={() => {
+                      setTypeFilter(f.key);
+                      setSelected([]); // never act on items the filter hides
+                    }}
                   />
                 )}
                 ListFooterComponent={
@@ -245,7 +253,10 @@ export default function FolderScreen() {
                     <Chip
                       label={includeSub ? 'Including subfolders' : 'This folder only'}
                       icon={includeSub ? '🗂️' : '📁'}
-                      onPress={() => setIncludeSub(v => !v)}
+                      onPress={() => {
+                        setIncludeSub(v => !v);
+                        setSelected([]);
+                      }}
                     />
                   ) : null
                 }

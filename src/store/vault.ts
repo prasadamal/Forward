@@ -57,6 +57,8 @@ interface VaultStore {
   setBiometrics: (enabled: boolean) => Promise<boolean>;
   changePasscode: (passcode: string, kind: PasscodeKind) => Promise<void>;
   verifyPasscode: (passcode: string) => Promise<boolean>;
+  /** Why the last passcode check failed, for the message: wrong, or locked out until a time. */
+  passcodeProblem: () => string;
   markRevealed: () => void;
   dismissNotice: () => void;
 
@@ -299,6 +301,12 @@ export const useVault = create<VaultStore>((set, get) => {
         key.fill(0);
       }
       set({ keyringState: await keyring.getState() });
+    },
+
+    passcodeProblem: () => {
+      const until = get().keyringState?.lockedUntil ?? 0;
+      const wait = Math.ceil((until - Date.now()) / 1000);
+      return wait > 0 ? `Too many attempts. Try again in ${wait}s.` : 'That’s not your passcode.';
     },
 
     verifyPasscode: async passcode => {

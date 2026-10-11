@@ -387,6 +387,7 @@ export function TextField({
       >
         <TextInput
           placeholderTextColor={c.textMuted}
+          accessibilityLabel={label}
           {...props}
           secureTextEntry={secure ? hidden : props.secureTextEntry}
           style={[

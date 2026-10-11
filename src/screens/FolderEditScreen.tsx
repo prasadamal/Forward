@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useVault } from '../store/vault';
 import { useFolderTree } from '../store/selectors';
-import { pathLabel } from '../folders/tree';
+import { getDescendantIds, pathLabel } from '../folders/tree';
 import { FOLDER_EMOJIS } from '../constants/palette';
 import { normalizePhrase } from '../organizer/text';
 import { radius, space, useTheme } from '../theme';
@@ -70,6 +70,16 @@ export default function FolderEditScreen() {
     }
   };
 
+  /** Close this editor, and the deleted folder's own screen if it's right below. */
+  const leaveDeleted = () => {
+    if (!existing) return;
+    const gone = new Set([existing.id, ...getDescendantIds(tree, existing.id)]);
+    const state = nav.getState();
+    const below = state.routes[state.index - 1];
+    const belowId = below?.name === 'Folder' ? (below.params as { folderId?: string } | undefined)?.folderId : undefined;
+    nav.pop(belowId && gone.has(belowId) ? 2 : 1);
+  };
+
   const remove = () => {
     if (!existing) return;
     Alert.alert(`Delete “${existing.name}”?`, 'Subfolders are deleted too. What about the items inside?', [
@@ -78,7 +88,7 @@ export default function FolderEditScreen() {
         text: 'Keep items',
         onPress: async () => {
           await deleteFolder(existing.id, 'keep');
-          nav.pop(2);
+          leaveDeleted();
         },
       },
       {
@@ -86,7 +96,7 @@ export default function FolderEditScreen() {
         style: 'destructive',
         onPress: async () => {
           await deleteFolder(existing.id, 'trash');
-          nav.pop(2);
+          leaveDeleted();
         },
       },
     ]);
@@ -94,7 +104,7 @@ export default function FolderEditScreen() {
 
   return (
     <Screen>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <Header
           onBack={() => nav.goBack()}
           backLabel="Cancel"

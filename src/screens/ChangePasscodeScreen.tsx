@@ -17,6 +17,7 @@ export default function ChangePasscodeScreen() {
   const currentKind = useVault(s => s.keyringState?.passcodeKind ?? 'pin');
   const biometrics = useVault(s => !!s.keyringState?.biometrics);
   const verifyPasscode = useVault(s => s.verifyPasscode);
+  const passcodeProblem = useVault(s => s.passcodeProblem);
   const changePasscode = useVault(s => s.changePasscode);
   const [step, setStep] = useState<Step>('verify');
   const [kind, setKind] = useState<PasscodeKind>(currentKind);
@@ -40,7 +41,7 @@ export default function ChangePasscodeScreen() {
       setBusy(false);
       setValue('');
       if (ok) setStep('create');
-      else setError('That’s not your current passcode.');
+      else setError(passcodeProblem());
       return;
     }
     if (step === 'create') {

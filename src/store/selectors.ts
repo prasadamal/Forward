@@ -46,20 +46,29 @@ export function sortItems(items: Item[]): Item[] {
  * Search over titles, notes, links, tags and folder names. Every word must
  * match somewhere. Secrets are never searched (they aren't in memory).
  */
-export function searchItems(items: Item[], tree: FolderTree, query: string): Item[] {
-  const words = normalizeText(query).trim().split(' ').filter(Boolean);
-  if (!words.length) return [];
-  return items.filter(item => {
-    if (item.trashedAt) return false;
-    const folderNames = item.folderIds.map(id => pathLabel(tree, id)).join(' ');
+/**
+ * Normalised search text per item, cached by object identity: items are
+ * immutable store objects, so an edit produces a new object and a fresh entry.
+ * Folder paths are part of the text, so the cache is per folder tree.
+ */
+const haystacks = new WeakMap<FolderTree, WeakMap<Item, string>>();
+
+function haystackFor(item: Item, tree: FolderTree): string {
+  let byItem = haystacks.get(tree);
+  if (!byItem) {
+    byItem = new WeakMap();
+    haystacks.set(tree, byItem);
+  }
+  let hay = byItem.get(item);
+  if (hay === undefined) {
     const meta = item.meta;
-    const hay = normalizeText(
+    hay = normalizeText(
       [
         item.title,
         item.sensitive ? '' : item.text,
         item.url,
         item.tags.join(' '),
-        folderNames,
+        item.folderIds.map(id => pathLabel(tree, id)).join(' '),
         meta.link?.author,
         meta.link?.siteName,
         meta.link?.description,
@@ -70,6 +79,17 @@ export function searchItems(items: Item[], tree: FolderTree, query: string): Ite
         .filter(Boolean)
         .join(' '),
     );
+    byItem.set(item, hay);
+  }
+  return hay;
+}
+
+export function searchItems(items: Item[], tree: FolderTree, query: string): Item[] {
+  const words = normalizeText(query).trim().split(' ').filter(Boolean);
+  if (!words.length) return [];
+  return items.filter(item => {
+    if (item.trashedAt) return false;
+    const hay = haystackFor(item, tree);
     return words.every(w => hay.includes(` ${w}`));
   });
 }

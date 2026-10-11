@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,6 +11,15 @@ import { space, useTheme } from '../theme';
 import { Button, EmptyState, Screen, SearchField, Txt } from '../ui/primitives';
 import { ItemRow } from '../ui/items';
 import { FolderRow } from '../ui/folders';
+
+function useDebounced<T>(value: T, ms: number): T {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+}
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -30,7 +39,9 @@ export default function SearchScreen() {
       .slice(0, 6);
   }, [query, tree]);
 
-  const results = useMemo(() => sortItems(searchItems(items, tree, query)).slice(0, 300), [items, tree, query]);
+  // Let typing stay smooth on big vaults: search once the user pauses.
+  const debounced = useDebounced(query, 150);
+  const results = useMemo(() => sortItems(searchItems(items, tree, debounced)).slice(0, 300), [items, tree, debounced]);
 
   return (
     <Screen>

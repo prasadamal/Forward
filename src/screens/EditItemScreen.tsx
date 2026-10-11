@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { RouteProp, useNavigation, usePreventRemove, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useVault } from '../store/vault';
@@ -111,21 +111,46 @@ export default function EditItemScreen() {
 
   // Load secrets once; later store refreshes must not overwrite what the user is typing.
   const editId = existing?.id;
+  // Saving before they've loaded would overwrite the stored password with "".
+  const [secretsReady, setSecretsReady] = useState(!editId || !wallet);
   useEffect(() => {
     if (!editId || !wallet) return;
     let alive = true;
     getSecret(editId).then(s => {
-      if (!s || !alive) return;
+      if (!alive) return;
+      setSecretsReady(true);
+      if (!s) return;
       setNumber(s.card?.number ?? '');
       setCvv(s.card?.cvv ?? '');
       setPin(s.card?.pin ?? '');
       setPassword(s.login?.password ?? '');
       setSecretNote(s.note ?? '');
-    });
+    }).catch(() => undefined); // locked meanwhile: Save stays disabled
     return () => {
       alive = false;
     };
   }, [editId, wallet, getSecret]);
+
+  // Ask before a swipe or back press throws away what was typed.
+  const snapshot = JSON.stringify([
+    title, text, url, sensitive, folderIds, number, holder, expiry, cvv, pin, issuer, kind, theme,
+    website, username, password, secretNote,
+  ]);
+  const baseline = useRef<string | null>(null);
+  if (secretsReady && baseline.current === null) baseline.current = snapshot;
+  const leaving = useRef(false);
+  const dirty = baseline.current !== null && snapshot !== baseline.current;
+  usePreventRemove(dirty, ({ data }) => {
+    // Leaving after a successful save: the ref flips before the next render.
+    if (leaving.current) {
+      nav.dispatch(data.action);
+      return;
+    }
+    Alert.alert('Discard changes?', 'What you typed here hasn’t been saved.', [
+      { text: 'Keep editing', style: 'cancel' },
+      { text: 'Discard', style: 'destructive', onPress: () => nav.dispatch(data.action) },
+    ]);
+  });
 
   const brand = useMemo(() => detectBrand(number), [number]);
   const previewMeta: CardMeta = {
@@ -151,7 +176,10 @@ export default function EditItemScreen() {
       const d = digitsOnly(number);
       if (d.length < 12 || d.length > 19) e.number = 'Card numbers have 12–19 digits';
       if (expiry && !checkExpiry(expiry).valid) e.expiry = 'Use MM/YY';
-      if (cvv && !/^\d{3,4}$/.test(cvv)) e.cvv = '3 or 4 digits';
+      // Known brands have a fixed length (Amex 4, others 3); a changed number must not keep a stale CVV.
+      if (cvv && (brand === 'other' ? !/^\d{3,4}$/.test(cvv) : cvv.length !== cvvLength(brand) || !/^\d+$/.test(cvv))) {
+        e.cvv = brand === 'other' ? '3 or 4 digits' : `${cvvLength(brand)} digits for ${BRAND_LABEL[brand]}`;
+      }
       if (pin && !/^\d{4,6}$/.test(pin)) e.pin = '4–6 digits';
     }
     if (type === 'login' && !password && !username) e.username = 'Add a username or password';
@@ -203,6 +231,7 @@ export default function EditItemScreen() {
         if (!sameFolders) await setItemFolders(existing.id, folderIds);
         if (type === 'link' && finalUrl && finalUrl !== existing.url) enrich(existing.id);
         toast('Saved');
+        leaving.current = true;
         nav.goBack();
         return;
       }
@@ -213,7 +242,13 @@ export default function EditItemScreen() {
           setSaving(false);
           Alert.alert('Already saved', 'This link is already in your vault.', [
             { text: 'OK', style: 'cancel' },
-            { text: 'Open it', onPress: () => nav.replace('Item', { itemId: dup.id }) },
+            {
+              text: 'Open it',
+              onPress: () => {
+                leaving.current = true;
+                nav.replace('Item', { itemId: dup.id });
+              },
+            },
           ]);
           return;
         }
@@ -235,6 +270,7 @@ export default function EditItemScreen() {
         { autoFile: !wallet && !folderIds.length },
       );
       toast(wallet ? 'Saved to your Wallet' : 'Saved');
+      leaving.current = true;
       nav.replace('Item', { itemId: item.id });
     } catch (e) {
       Alert.alert('Couldn’t save', e instanceof Error ? e.message : String(e));
@@ -259,12 +295,12 @@ export default function EditItemScreen() {
   return (
     <Screen>
       {wallet ? <ProtectFromCapture id="edit-secret" /> : null}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <Header
           onBack={() => nav.goBack()}
           backLabel="Cancel"
           title={heading}
-          right={<Button title="Save" compact onPress={save} loading={saving} />}
+          right={<Button title="Save" compact onPress={save} loading={saving || !secretsReady} disabled={!secretsReady} />}
         />
         <Scroll>
           {type === 'card' ? (

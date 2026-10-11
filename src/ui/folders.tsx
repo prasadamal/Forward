@@ -1,5 +1,5 @@
 import React, { memo, useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Folder } from '../types';
 import { radius, space, useTheme } from '../theme';
@@ -188,7 +188,13 @@ export function FolderPickerSheet({
   const create = async () => {
     const name = newName.trim();
     if (!name || !onCreateFolder || creatingIn === undefined) return;
-    const folder = await onCreateFolder(creatingIn, name);
+    let folder: Folder;
+    try {
+      folder = await onCreateFolder(creatingIn, name);
+    } catch (e) {
+      Alert.alert('Couldn’t create the folder', e instanceof Error ? e.message : String(e));
+      return;
+    }
     setNewName('');
     setCreatingIn(undefined);
     if (folder.parentId) setExpanded(e => new Set(e).add(folder.parentId!));

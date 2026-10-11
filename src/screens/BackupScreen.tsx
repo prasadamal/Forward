@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';
 import { useNavigation } from '@react-navigation/native';
@@ -93,7 +93,7 @@ export default function BackupScreen() {
 
   return (
     <Screen>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <Header onBack={() => nav.goBack()} title="Backup" subtitle="Your vault never leaves this phone unless you export it." />
         <Scroll>
           <Card style={{ marginBottom: space.xl }}>

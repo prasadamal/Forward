@@ -220,11 +220,11 @@ export default function OnboardingScreen() {
     <Screen edges={['top', 'bottom', 'left', 'right']}>
       <View style={{ flex: 1, paddingHorizontal: space.xl, paddingTop: space.xl }}>
         {confirming ? (
-          <Pressable onPress={() => { setStep('create'); setFirst(''); setSecond(''); }} accessibilityRole="button" hitSlop={10}>
+          <Pressable onPress={() => { setStep('create'); setFirst(''); setSecond(''); }} accessibilityRole="button" accessibilityLabel="Back" hitSlop={10}>
             <Ionicons name="chevron-back" size={26} color={c.accent} />
           </Pressable>
         ) : (
-          <Pressable onPress={() => setStep('welcome')} accessibilityRole="button" hitSlop={10}>
+          <Pressable onPress={() => setStep('welcome')} accessibilityRole="button" accessibilityLabel="Back" hitSlop={10}>
             <Ionicons name="chevron-back" size={26} color={c.accent} />
           </Pressable>
         )}
