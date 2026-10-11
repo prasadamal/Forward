@@ -45,11 +45,19 @@ const PLATFORM_TO_SOURCE: Record<string, Source> = {
   manual: 'manual',
 };
 
-function time(iso: string | undefined, fallback: number): number {
-  const t = iso ? Date.parse(iso) : NaN;
+function time(iso: unknown, fallback: number): number {
+  const t = typeof iso === 'string' ? Date.parse(iso) : NaN;
   return Number.isFinite(t) ? t : fallback;
 }
 
+const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+
+/**
+ * Safe to run again after an interruption: every folder and note gets an id
+ * derived from its v1 id, and ones already imported are skipped. The plaintext
+ * is removed only once everything is in the vault.
+ */
 export async function importLegacyData(repo: VaultRepository, storage: LegacyStorage, now: number): Promise<number> {
   const raw = await storage.getItem(LEGACY_STORAGE_KEY);
   if (!raw) return 0;
@@ -60,43 +68,48 @@ export async function importLegacyData(repo: VaultRepository, storage: LegacySto
     return 0;
   }
 
+  const existingFolders = new Set((await repo.listFolders()).map(f => f.id));
   const folderMap = new Map<string, string>();
-  for (const f of data.folders ?? []) {
-    if (!f?.id || f.isSystem || !f.name) continue;
-    const created = await repo.createFolder({
-      parentId: null,
-      name: f.name,
-      emoji: f.emoji || '📁',
-      color: f.color,
-    });
-    folderMap.set(f.id, created.id);
+  for (const f of Array.isArray(data.folders) ? data.folders : []) {
+    const name = str(f?.name).trim();
+    if (!f || !str(f.id) || f.isSystem || !name) continue;
+    const id = `v1-folder-${f.id}`;
+    if (!existingFolders.has(id)) {
+      await repo.createFolder({ id, parentId: null, name, emoji: str(f.emoji) || '📁', color: str(f.color) || undefined });
+    }
+    folderMap.set(str(f.id), id);
   }
 
   // v1 "archived" notes were kept, not deleted: file them in an Archive folder.
-  let archiveFolderId: string | undefined;
+  const ARCHIVE_ID = 'v1-folder-archive';
   const archiveFolder = async () => {
-    if (!archiveFolderId) {
-      archiveFolderId = (await repo.createFolder({ parentId: null, name: 'Archive', emoji: '🗄️' })).id;
+    if (!existingFolders.has(ARCHIVE_ID)) {
+      await repo.createFolder({ id: ARCHIVE_ID, parentId: null, name: 'Archive', emoji: '🗄️' });
+      existingFolders.add(ARCHIVE_ID);
     }
-    return archiveFolderId;
+    return ARCHIVE_ID;
   };
 
   let count = 0;
-  for (const n of data.notes ?? []) {
-    if (!n) continue;
-    const content = (n.content ?? '').trim();
-    const url = n.url ?? extractUrl(content);
+  const notes = Array.isArray(data.notes) ? data.notes : [];
+  for (const [index, n] of notes.entries()) {
+    if (!n || typeof n !== 'object') continue;
+    const id = `v1-note-${str(n.id) || index}`;
+    if (await repo.getItem(id)) continue;
+    const content = str(n.content).trim();
+    const url = str(n.url) || extractUrl(content);
     const text = url ? content.split(url).join(' ').replace(/\s+\n/g, '\n').trim() : content;
     const createdAt = time(n.createdAt, now);
-    const folderIds = (n.folderIds ?? []).map(id => folderMap.get(id)).filter((id): id is string => !!id);
+    const folderIds = strings(n.folderIds).map(fid => folderMap.get(fid)).filter((fid): fid is string => !!fid);
     if (n.archived) folderIds.push(await archiveFolder());
     await repo.createItem({
+      id,
       type: url ? 'link' : 'note',
-      title: (n.title ?? '').trim() || (url ? 'Saved link' : 'Note'),
+      title: str(n.title).trim() || (url ? 'Saved link' : 'Note'),
       text,
       url,
-      source: PLATFORM_TO_SOURCE[n.platform ?? ''] ?? (url ? 'web' : 'manual'),
-      tags: Array.isArray(n.tags) ? n.tags.filter(t => typeof t === 'string') : [],
+      source: PLATFORM_TO_SOURCE[str(n.platform)] ?? (url ? 'web' : 'manual'),
+      tags: strings(n.tags),
       folderIds,
       pinned: !!n.pinned && !n.archived,
       filing: 'manual',

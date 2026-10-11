@@ -119,17 +119,16 @@ function describeError(e: unknown): string {
 
 export const useVault = create<VaultStore>((set, get) => {
   /** Loads everything after a successful unlock. */
-  async function afterUnlock(key: Uint8Array, opts: { importLegacy?: boolean } = {}) {
+  async function afterUnlock(key: Uint8Array) {
     const session = await openSession(key);
     const { repo } = session;
     let notice: string | null = null;
-    if (opts.importLegacy) {
-      try {
-        const n = await importLegacyData(repo, AsyncStorage, Date.now());
-        if (n > 0) notice = `Moved ${n} ${n === 1 ? 'note' : 'notes'} from the previous version into your encrypted vault.`;
-      } catch {
-        notice = 'Some notes from the previous version could not be imported.';
-      }
+    // Runs on every unlock until the v1 notes are fully moved; a no-op afterwards.
+    try {
+      const n = await importLegacyData(repo, AsyncStorage, Date.now());
+      if (n > 0) notice = `Moved ${n} ${n === 1 ? 'note' : 'notes'} from the previous version into your encrypted vault.`;
+    } catch {
+      notice = 'Some notes from the previous version couldn’t be moved yet. Forward will try again next time you unlock.';
     }
     await repo.purgeTrash(TRASH_RETENTION_MS).catch(() => undefined);
     const [folders, items, settings, keyringState] = await Promise.all([
@@ -200,7 +199,7 @@ export const useVault = create<VaultStore>((set, get) => {
       // A vault file without a keyring is unreadable leftovers; start clean.
       await eraseEverything().catch(() => undefined);
       const key = await keyring.setup(passcode, kind);
-      await afterUnlock(key, { importLegacy: true });
+      await afterUnlock(key);
     },
 
     unlockWithPasscode: async passcode => {

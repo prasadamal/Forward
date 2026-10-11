@@ -122,6 +122,37 @@ describe('legacy import', () => {
     await db.close();
   });
 
+  it('picks up where it left off after an interruption, and skips malformed notes', async () => {
+    const { db, repo } = await freshRepo();
+    const data = {
+      notes: [
+        { id: 'a', title: 'First', content: 'one', folderIds: ['f1'] },
+        { id: 'b', title: 42, content: { not: 'text' }, folderIds: 'f1', tags: 'x' },
+        { id: 'c', title: 'Third', content: 'three' },
+      ],
+      folders: [{ id: 'f1', name: 'Kochi' }],
+    };
+    // First run dies after the first note is saved.
+    const realCreate = repo.createItem.bind(repo);
+    let calls = 0;
+    repo.createItem = async input => {
+      if (++calls === 2) throw new Error('app killed');
+      return realCreate(input);
+    };
+    const first = storage(data);
+    await expect(importLegacyData(repo, first, 1)).rejects.toThrow('app killed');
+    expect(first.removed).toBe(false);
+    repo.createItem = realCreate;
+
+    const second = storage(data);
+    expect(await importLegacyData(repo, second, 1)).toBe(2);
+    expect(second.removed).toBe(true);
+    const items = await repo.listItems();
+    expect(items.map(i => i.title).sort()).toEqual(['First', 'Note', 'Third']);
+    expect((await repo.listFolders()).map(f => f.name)).toEqual(['Kochi']);
+    await db.close();
+  });
+
   it('does nothing without legacy data and tolerates corrupt JSON', async () => {
     const { db, repo } = await freshRepo();
     expect(await importLegacyData(repo, storage(undefined), 1)).toBe(0);

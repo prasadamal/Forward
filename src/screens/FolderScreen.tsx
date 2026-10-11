@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ActionSheetIOS, Alert, FlatList, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -13,6 +13,7 @@ import { Button, Chip, EmptyState, Header, IconButton, Screen, Txt } from '../ui
 import { ItemRow } from '../ui/items';
 import { Breadcrumbs, FolderBubble, FolderPickerSheet, FolderRow } from '../ui/folders';
 import { AddSheet } from '../ui/AddSheet';
+import { useActionMenu } from '../ui/ActionMenu';
 import { toast } from '../ui/Toast';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -53,6 +54,7 @@ export default function FolderScreen() {
   const [selected, setSelected] = useState<string[]>([]);
   const [picker, setPicker] = useState<'items' | 'folder' | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const { menu, open: openMenu } = useActionMenu();
   const selecting = selected.length > 0;
 
   const subfolders = folder ? childrenOf(tree, folder.id) : [];
@@ -138,21 +140,7 @@ export default function FolderScreen() {
           ),
       },
     ];
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: [...actions.map(a => a.label), 'Cancel'],
-          cancelButtonIndex: actions.length,
-          destructiveButtonIndex: actions.findIndex(a => a.destructive),
-        },
-        i => actions[i]?.run(),
-      );
-    } else {
-      Alert.alert(folder.name, undefined, [
-        ...actions.map(a => ({ text: a.label, style: a.destructive ? ('destructive' as const) : ('default' as const), onPress: a.run })),
-        { text: 'Cancel', style: 'cancel' as const },
-      ]);
-    }
+    openMenu(folder.name, actions);
   };
 
   const moveSelected = async (targets: string[]) => {
@@ -187,6 +175,7 @@ export default function FolderScreen() {
 
   return (
     <Screen>
+      {menu}
       <FlatList
         data={shown}
         keyExtractor={i => i.id}

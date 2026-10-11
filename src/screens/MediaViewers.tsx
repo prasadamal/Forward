@@ -76,7 +76,11 @@ export function VideoPlayerScreen() {
     let tmp: string | null = null;
     getBlob(itemId, 'original')
       .then(blob => {
-        if (!blob || !alive) return;
+        if (!alive) return;
+        if (!blob) {
+          setFailed(true);
+          return;
+        }
         tmp = writeTempFile(blob.data, fileName ?? `video.${blob.mime.split('/')[1] ?? 'mp4'}`);
         setUri(tmp);
       })

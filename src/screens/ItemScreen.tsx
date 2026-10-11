@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActionSheetIOS, Alert, Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,6 +15,7 @@ import { formatBytes } from '../utils/encoding';
 import { displayHost } from '../ingest/urls';
 import { copySecret, copyText } from '../security/clipboard';
 import { ProtectFromCapture } from '../ui/ProtectFromCapture';
+import { useActionMenu } from '../ui/ActionMenu';
 import { shareItemOut } from '../actions/files';
 import { radius, space, useTheme } from '../theme';
 import { Button, Chip, EmptyState, Header, IconButton, IconName, Screen, Scroll, Txt } from '../ui/primitives';
@@ -37,7 +38,8 @@ function openUrl(url: string) {
 function Hero({ item, onPress }: { item: Item; onPress?: () => void }) {
   const { c } = useTheme();
   const kind = item.type === 'image' ? 'original' : 'thumb';
-  const uri = useImageUri(item.id, kind, (item.type === 'image' ? item.hasBlob : item.hasThumb) && !item.sensitive);
+  // Only mounted once the item is visible (not hidden, or revealed).
+  const uri = useImageUri(item.id, kind, item.type === 'image' ? item.hasBlob : item.hasThumb);
   if (!uri) return null;
   const media = item.meta.media;
   const ratio = media?.width && media?.height ? media.width / media.height : 16 / 9;
@@ -93,6 +95,7 @@ export default function ItemScreen() {
   const [secret, setSecret] = useState<ItemSecret | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [picking, setPicking] = useState(false);
+  const { menu, open: openMenu } = useActionMenu();
 
   // Forget decrypted secrets when leaving or when the item changes.
   useEffect(() => () => setSecret(null), [itemId]);
@@ -170,21 +173,7 @@ export default function ItemScreen() {
       });
     }
     actions.push({ label: 'Move to Trash', destructive: true, run: remove });
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: [...actions.map(a => a.label), 'Cancel'],
-          cancelButtonIndex: actions.length,
-          destructiveButtonIndex: actions.findIndex(a => a.destructive),
-        },
-        i => actions[i]?.run(),
-      );
-    } else {
-      Alert.alert(item.title || 'Item', undefined, [
-        ...actions.map(a => ({ text: a.label, style: a.destructive ? ('destructive' as const) : ('default' as const), onPress: a.run })),
-        { text: 'Cancel', style: 'cancel' as const },
-      ]);
-    }
+    openMenu(item.title || 'Item', actions);
   };
 
   const link = item.meta.link;
@@ -196,6 +185,7 @@ export default function ItemScreen() {
   return (
     <Screen>
       {protectedItem ? <ProtectFromCapture id="item-secret" /> : null}
+      {menu}
       <Header
         onBack={() => nav.goBack()}
         right={
