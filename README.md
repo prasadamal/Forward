@@ -109,9 +109,9 @@ Checked against the store rules in force in October 2026:
   **Forward**; the first time, users may need to tap **More** to add it to their favourites.
 - **Privacy policy.** Fill in the three placeholders in [PRIVACY.md](PRIVACY.md). The
   "Publish privacy policy" workflow then hosts it on GitHub Pages at
-  `https://prasadamal.github.io/Forward/privacy/` (already set in `app.json`). Then put the URL in both store listings and set
-  `"extra": { "privacyPolicyUrl": "…" }` in `app.json`, so Settings › Privacy & security links
-  to it. Both stores also need a support URL or email.
+  `https://prasadamal.github.io/Forward/privacy/` (already set in `app.json`, so
+  Settings › Privacy & security links to it). Put the URL in both store listings. Both stores
+  also need a support URL or email.
 - **Store forms.**
   - Google Play Data safety: no data collected or shared.
   - App Store privacy label: Data Not Collected.
