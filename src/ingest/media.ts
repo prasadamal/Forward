@@ -173,10 +173,26 @@ export function writeTempFile(bytes: Uint8Array, name: string): string {
 }
 
 export function clearOpenedFiles(): void {
+  removeCacheDir(OPEN_DIR);
+}
+
+function removeCacheDir(name: string): void {
   try {
-    const dir = new Directory(Paths.cache, OPEN_DIR);
+    const dir = new Directory(Paths.cache, name);
     if (dir.exists) dir.delete();
   } catch {
     // ignore
   }
+}
+
+/**
+ * Removes every temporary file Forward may have left in its cache: decrypted
+ * copies opened in other apps, downloaded preview images and exported backups.
+ * Locking already clears these; this covers the app being killed (or crashing)
+ * while the vault was open, which would otherwise leave decrypted files behind.
+ */
+export function clearLeftoverTempFiles(): void {
+  removeCacheDir(OPEN_DIR);
+  removeCacheDir('previews');
+  removeCacheDir('backups');
 }

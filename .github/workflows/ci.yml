@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Privacy policy has no blanks left (warning only until it is filled in)
+        run: node scripts/build-privacy-page.mjs --check || echo "::warning::PRIVACY.md still has [bracketed] blanks"
+      - name: Bundle for Android and iOS
+        run: |
+          npx expo export --platform android --output-dir "$RUNNER_TEMP/android"
+          npx expo export --platform ios --output-dir "$RUNNER_TEMP/ios"
+      - name: Generate native projects (config plugins, share extension, patches)
+        run: |
+          npx expo prebuild --platform all --no-install
+          test -f ios/ForwardShare/ShareExtension-Info.plist
+          grep -q 'android:allowBackup="false"' android/app/src/main/AndroidManifest.xml
