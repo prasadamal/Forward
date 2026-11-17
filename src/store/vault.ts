@@ -18,7 +18,7 @@ import { exportBackup as writeBackup, importBackup as readBackup, MergeResult } 
 import { importLegacyData } from '../db/legacyImport';
 import { enrichLink, IngestDeps, IngestOutcome, ingestShare } from '../ingest/ingest';
 import { fetchLinkPreview } from '../ingest/linkPreview';
-import { deleteImportedCopy, downloadThumbnail, prepareImage, readFileBytes } from '../ingest/media';
+import { clearLeftoverTempFiles, deleteImportedCopy, downloadThumbnail, prepareImage, readFileBytes } from '../ingest/media';
 import { autoFileItem, classifyInputFor } from '../organizer/fileItem';
 import { buildTree, uniqueChildName } from '../folders/tree';
 import { folderColor } from '../constants/palette';
@@ -184,6 +184,8 @@ export const useVault = create<VaultStore>((set, get) => {
     setOnboarding: on => set({ onboarding: on }),
 
     boot: async () => {
+      // Nothing is open yet, so anything in these folders was left by a session that never locked.
+      clearLeftoverTempFiles();
       try {
         const status = await keyring.status();
         const keyringState = await keyring.getState();

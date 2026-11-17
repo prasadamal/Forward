@@ -91,6 +91,10 @@ npx eas build --profile production --platform all
 
 ### Releasing
 
+Start with [`store/RELEASE_CHECKLIST.md`](store/RELEASE_CHECKLIST.md): the owner steps in order and a
+device test table. Listing copy is in [`store/LISTING.md`](store/LISTING.md) and the privacy-form answers in
+[`store/DATA_SAFETY.md`](store/DATA_SAFETY.md).
+
 Checked against the store rules in force in October 2026:
 
 - **Platform requirements are already met.** Expo SDK 55 targets Android 16 (API 36), which
@@ -103,8 +107,9 @@ Checked against the store rules in force in October 2026:
   `ForwardShare` target. EAS sets this up for you. When building locally, enable App Groups for
   both targets in Xcode and pick your team. In the share sheet, Forward appears as
   **Forward**; the first time, users may need to tap **More** to add it to their favourites.
-- **Privacy policy.** Host [PRIVACY.md](PRIVACY.md) (for example at `/privacy/forward`) and
-  fill in its three placeholders. Then put the URL in both store listings and set
+- **Privacy policy.** Fill in the three placeholders in [PRIVACY.md](PRIVACY.md). The
+  "Publish privacy policy" workflow then hosts it on GitHub Pages at
+  `https://prasadamal.github.io/Forward/privacy/` (already set in `app.json`). Then put the URL in both store listings and set
   `"extra": { "privacyPolicyUrl": "…" }` in `app.json`, so Settings › Privacy & security links
   to it. Both stores also need a support URL or email.
 - **Store forms.**

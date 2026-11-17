@@ -105,6 +105,9 @@
       ],
       "expo-video",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "privacyPolicyUrl": "https://prasadamal.github.io/Forward/privacy/"
+    }
   }
 }
