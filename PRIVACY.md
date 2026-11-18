@@ -7,8 +7,8 @@
 
 # Forward privacy policy
 
-**Effective date:** [date you publish]
-**Applies to:** the Forward app for iPhone and Android, published by [your name or studio name].
+**Effective date:** 19 November 2026
+**Applies to:** the Forward app for iPhone and Android, published by Amal Prasad.
 
 ## The short version
 
@@ -68,4 +68,4 @@ If this policy changes, we'll update this page and the effective date above.
 ## Contact
 
 Questions, requests or complaints, including under India's Digital Personal Data Protection
-rules: [support email].
+rules: amalprasadappu@gmail.com.
