@@ -19,7 +19,7 @@ What is already done in the repository, and what only the owner can do. Work top
    name instead, change `bundleIdentifier` and `package` in `app.json`.
 3. **Privacy policy.** Fill the three `[bracketed]` blanks in `PRIVACY.md`. In GitHub:
    Settings → Pages → Source: GitHub Actions. Push to `main`; the page appears at
-   `https://prasadamal.github.io/Forward/privacy/`. (Pages on a private repository needs a
+   `https://forward-privacy.onrender.com/privacy/`. (Pages on a private repository needs a
    paid GitHub plan; otherwise make the repository public or host the page elsewhere and
    update `extra.privacyPolicyUrl` in `app.json`.)
 4. **Link the project to EAS.** `npx eas login`, then `npx eas init`.
