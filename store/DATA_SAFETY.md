@@ -29,7 +29,7 @@ Other Play declarations:
 
 - **Data collection:** "Data Not Collected".
 - **Tracking:** No.
-- **Privacy policy URL:** `https://prasadamal.github.io/Forward/privacy/` (after the
+- **Privacy policy URL:** `https://forward-privacy.onrender.com/privacy/` (after the
   "Publish privacy policy" workflow has run).
 
 ## App Store: export compliance
