@@ -107,8 +107,8 @@ Checked against the store rules in force in October 2026:
   `ForwardShare` target. EAS sets this up for you. When building locally, enable App Groups for
   both targets in Xcode and pick your team. In the share sheet, Forward appears as
   **Forward**; the first time, users may need to tap **More** to add it to their favourites.
-- **Privacy policy.** Fill in the three placeholders in [PRIVACY.md](PRIVACY.md). The
-  "Publish privacy policy" workflow then hosts it on GitHub Pages at
+- **Privacy policy.** [PRIVACY.md](PRIVACY.md) is filled in. A free Render static site
+  (`forward-privacy`) rebuilds it from `main` on every push and serves it at
   `https://forward-privacy.onrender.com/privacy/` (already set in `app.json`, so
   Settings › Privacy & security links to it). Put the URL in both store listings. Both stores
   also need a support URL or email.
