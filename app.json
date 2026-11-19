@@ -107,7 +107,11 @@
       "expo-font"
     ],
     "extra": {
-      "privacyPolicyUrl": "https://forward-privacy.onrender.com/privacy/"
-    }
+      "privacyPolicyUrl": "https://forward-privacy.onrender.com/privacy/",
+      "eas": {
+        "projectId": "11761e0f-2da7-408f-9011-1e6b0bfe8be9"
+      }
+    },
+    "owner": "prasadaamals-team"
   }
 }

@@ -17,11 +17,10 @@ What is already done in the repository, and what only the owner can do. Work top
 1. **Accounts.** Google Play Console ($25 once), Apple Developer ($99 a year), expo.dev (free).
 2. **Decide the app ID now.** It can never change after the first upload. To use a studio
    name instead, change `bundleIdentifier` and `package` in `app.json`.
-3. **Privacy policy.** Fill the three `[bracketed]` blanks in `PRIVACY.md`. In GitHub:
-   Settings → Pages → Source: GitHub Actions. Push to `main`; the page appears at
-   `https://forward-privacy.onrender.com/privacy/`. (Pages on a private repository needs a
-   paid GitHub plan; otherwise make the repository public or host the page elsewhere and
-   update `extra.privacyPolicyUrl` in `app.json`.)
+3. **Privacy policy.** Done: `PRIVACY.md` is filled in, and the free Render static site
+   `forward-privacy` rebuilds it from `main` (`node scripts/build-privacy-page.mjs --out _site`)
+   and serves it at `https://forward-privacy.onrender.com/privacy/`. Edit `PRIVACY.md` and push
+   to `main` to update it.
 4. **Link the project to EAS.** `npx eas login`, then `npx eas init`.
 5. **First builds.** `npx eas build --profile preview --platform android` for an APK to
    install directly; `npx eas build --profile production --platform ios` for TestFlight.

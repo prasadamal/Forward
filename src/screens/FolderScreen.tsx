@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ActionSheetIOS, Alert, FlatList, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ActionSheetIOS, Alert, FlatList, Platform, Pressable, Share, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -14,6 +14,8 @@ import { ItemRow } from '../ui/items';
 import { Breadcrumbs, FolderBubble, FolderPickerSheet, FolderRow } from '../ui/folders';
 import { AddSheet } from '../ui/AddSheet';
 import { toast } from '../ui/Toast';
+import { folderListText } from '../share/folderList';
+import { withAutoLockSuspended } from '../security/autoLock';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, 'Folder'>;
@@ -102,9 +104,24 @@ export default function FolderScreen() {
 
   const toggleSelect = (id: string) => setSelected(s => (s.includes(id) ? s.filter(x => x !== id) : [...s, id]));
 
+  const shareAsList = async () => {
+    if (!folder) return;
+    const list = folderListText(folder.name, items);
+    if (!list) {
+      Alert.alert('Nothing to share yet', 'Only saved links go into a shared list. Notes, photos, files and hidden items stay on your phone.');
+      return;
+    }
+    try {
+      await withAutoLockSuspended(() => Share.share({ message: list.message }));
+    } catch {
+      toast('Could not open the share sheet');
+    }
+  };
+
   const folderMenu = () => {
     if (!folder) return;
     const actions: { label: string; destructive?: boolean; run: () => void }[] = [
+      { label: 'Share as a list', run: () => void shareAsList() },
       { label: 'Edit folder', run: () => nav.navigate('FolderEdit', { folderId: folder.id }) },
       { label: 'New folder inside', run: () => nav.navigate('FolderEdit', { parentId: folder.id }) },
       { label: 'Move folder…', run: () => setPicker('folder') },
