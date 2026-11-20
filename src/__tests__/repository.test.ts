@@ -125,6 +125,17 @@ describe('items', () => {
     expect(await repo.findByUrl('https://youtu.be/dQw4w9WgXcQ')).toBeNull();
   });
 
+  it('keeps a reminder with the item, alongside other details, until it is cleared', async () => {
+    const item = await repo.createItem({ type: 'link', title: 'Cafe', url: 'https://a.com', source: 'web', meta: { link: { siteName: 'A' } } });
+    await repo.updateItem(item.id, { meta: { ...item.meta, reminder: { at: 1_900_000_000_000 } } });
+    const set = await repo.getItem(item.id);
+    expect(set!.meta).toEqual({ link: { siteName: 'A' }, reminder: { at: 1_900_000_000_000 } });
+    expect((await repo.listItems()).find(i => i.id === item.id)!.meta.reminder).toEqual({ at: 1_900_000_000_000 });
+    const { reminder: _cleared, ...rest } = set!.meta;
+    await repo.updateItem(item.id, { meta: rest });
+    expect((await repo.getItem(item.id))!.meta).toEqual({ link: { siteName: 'A' } });
+  });
+
   it('updates fields and folders', async () => {
     const f1 = await repo.createFolder({ parentId: null, name: 'One' });
     const f2 = await repo.createFolder({ parentId: null, name: 'Two' });

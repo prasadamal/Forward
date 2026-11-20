@@ -13,6 +13,7 @@ import { Banner, Chip, EmptyState, IconButton, Screen, Txt } from '../ui/primiti
 import { ItemRow } from '../ui/items';
 import { FolderTile } from '../ui/folders';
 import { AddSheet } from '../ui/AddSheet';
+import { RemindersSection } from '../ui/Reminder';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Filter = 'all' | Extract<ItemType, 'link' | 'image' | 'video' | 'note' | 'file'>;
@@ -94,6 +95,8 @@ export default function HomeScreen() {
           />
         </View>
       ) : null}
+
+      <RemindersSection onOpen={id => nav.navigate('Item', { itemId: id })} />
 
       {topFolders.length ? (
         <>

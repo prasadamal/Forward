@@ -38,7 +38,7 @@ const SECTIONS: { icon: IconName; title: string; body: string }[] = [
   {
     icon: 'shield-checkmark-outline',
     title: 'Permissions',
-    body: 'No contacts, location, camera or storage permissions. Photos and files are picked with the system pickers, which only hand over what you choose.',
+    body: 'No contacts, location, camera or storage permissions. Photos and files are picked with the system pickers, which only hand over what you choose. Notifications are asked for only when you set a reminder, and they never show what the item is.',
   },
   {
     icon: 'key-outline',
