@@ -45,6 +45,11 @@ You choose photos and files in the system pickers, which pass on only what you p
 turn on Face ID or fingerprint unlock, your phone does the check; Forward never receives
 biometric data.
 
+If you set a reminder on something you saved, Forward asks to send notifications. Reminders
+are scheduled on your phone, not on a server. The notification only says that you asked to be
+reminded about something; it never shows what the item is. You can turn notifications off in
+your phone's settings, and reminders still appear inside Forward.
+
 ## What we receive
 
 Nothing from the app itself. Apple and Google give developers download numbers, and crash

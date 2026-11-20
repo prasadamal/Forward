@@ -104,7 +104,14 @@
         }
       ],
       "expo-video",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#7C6FE0"
+        }
+      ]
     ],
     "extra": {
       "privacyPolicyUrl": "https://forward-privacy.onrender.com/privacy/",

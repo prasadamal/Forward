@@ -22,8 +22,11 @@ Other Play declarations:
   passwords); 13+ is also accurate.
 - **Financial features:** None. Forward stores card details the user types in. It does not
   process payments, lend, or move money.
-- **Permissions:** Internet, biometrics, vibrate only. No photo, media, camera, microphone,
-  location or contacts permission (they are blocked in `app.json`).
+- **Permissions:** Internet, biometrics, vibrate, notifications (`POST_NOTIFICATIONS`, asked
+  for only when the user sets a reminder) and `RECEIVE_BOOT_COMPLETED` (so scheduled reminders
+  survive a restart; both come from `expo-notifications`). No photo, media, camera, microphone,
+  location or contacts permission (they are blocked in `app.json`). Reminders are local
+  notifications: nothing is sent to a server and no push token is created.
 
 ## App Store: App Privacy
 

@@ -25,6 +25,7 @@ import { SecretField } from '../ui/SecretField';
 import { useReveal } from '../ui/useReveal';
 import { formatCardNumber } from '../wallet/cards';
 import { toast } from '../ui/Toast';
+import { ReminderCard, ReminderSheet } from '../ui/Reminder';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, 'Item'>;
@@ -93,6 +94,7 @@ export default function ItemScreen() {
   const [secret, setSecret] = useState<ItemSecret | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [reminding, setReminding] = useState(false);
 
   // Forget decrypted secrets when leaving or when the item changes.
   useEffect(() => () => setSecret(null), [itemId]);
@@ -212,6 +214,12 @@ export default function ItemScreen() {
           ) : (
             <>
               <IconButton
+                name={item.meta.reminder ? 'alarm' : 'alarm-outline'}
+                label={item.meta.reminder ? 'Change reminder' : 'Remind me'}
+                color={item.meta.reminder ? c.accent : undefined}
+                onPress={() => setReminding(true)}
+              />
+              <IconButton
                 name={item.pinned ? 'pin' : 'pin-outline'}
                 label={item.pinned ? 'Unpin' : 'Pin'}
                 color={item.pinned ? c.warning : undefined}
@@ -224,6 +232,7 @@ export default function ItemScreen() {
         }
       />
       <Scroll>
+        <ReminderCard item={item} onChange={() => setReminding(true)} />
         {/* ── Wallet: card ── */}
         {item.type === 'card' && card ? (
           <View style={{ marginBottom: space.lg }}>
@@ -456,6 +465,7 @@ export default function ItemScreen() {
         }}
         onClose={() => setPicking(false)}
       />
+      <ReminderSheet item={item} visible={reminding} onClose={() => setReminding(false)} />
       {prompt}
     </Screen>
   );

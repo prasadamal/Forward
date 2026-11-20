@@ -8,6 +8,7 @@ import { useAutoLock } from './src/security/autoLock';
 import { applyScreenCapturePolicy, enableAppSwitcherPrivacy } from './src/security/privacy';
 import { flushClipboard } from './src/security/clipboard';
 import { navigationRef } from './src/navigation/navigationRef';
+import { useReminders } from './src/reminders/useReminders';
 import AppNavigator from './src/navigation/AppNavigator';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import LockScreen from './src/screens/LockScreen';
@@ -61,6 +62,7 @@ function Shell() {
 
   const unlocked = status === 'unlocked' && !onboarding;
   useShowPendingShares(unlocked && navReady, navTick);
+  useReminders(unlocked && navReady, navTick);
   useEffect(() => {
     if (!unlocked) setNavReady(false);
   }, [unlocked]);

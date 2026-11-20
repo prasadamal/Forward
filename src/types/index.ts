@@ -94,8 +94,14 @@ export interface LoginMeta {
   website: string;
 }
 
+/** "Remind me about this" (ms since epoch). Cleared when done. */
+export interface ReminderMeta {
+  at: number;
+}
+
 /** Non-secret structured data. Safe to keep in memory while unlocked. */
 export interface ItemMeta {
+  reminder?: ReminderMeta;
   link?: LinkMeta;
   media?: MediaMeta;
   card?: CardMeta;
