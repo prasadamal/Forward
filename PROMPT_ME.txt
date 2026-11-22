@@ -1,0 +1,90 @@
+FORWARD — PROMPT ME
+====================
+Read this first. It is the full story of Forward so a new developer or AI agent can continue
+without the founder having to explain anything again. Last updated: 23 November 2026.
+(This repo is PUBLIC: no passwords, keys or private emails belong in this file.)
+
+Founder: Amal Prasad (non-technical), company Ariyoo.
+Repo: github.com/prasadamal/Forward  ·  bundle id com.prasadamal.forward  ·  v2.0.0
+
+
+1. THE IDEA
+-----------
+"Forward anything. Find it sorted. Keep it safe."
+You share things INTO Forward from any app (YouTube, Instagram, X, WhatsApp, Photos, Files,
+browsers) and it files them by place and topic, on your phone, in an encrypted vault.
+Example: a Bangalore food vlog, a place on Instagram and an app on X all land under Bangalore
+(Food / Places to Visit / Apps & Tech). It also holds cards, passwords and secret notes.
+No account, no server, no analytics. It cures "I saved it somewhere".
+
+
+2. THE END PRODUCT
+------------------
+The private "second brain" for things people save from social media: share it in, find it by
+city and topic, get reminded, plan trips from saved places. Android first, then iPhone.
+Monetisation later: a one-time Pro unlock (OCR, map view, device-to-device sync), not a
+subscription, and not at launch.
+
+
+3. FEATURES THAT EXIST TODAY (all merged to main)
+--------------------------------------------------
+- Share intake from any app (iOS Share Extension, Android share intents; up to 10 images).
+- Offline classifier: ~280 cities/states/countries + ~300 neighbourhoods/landmarks/treks,
+  13 topics; reads titles, captions, hashtags, URL slugs; whole-word matching; India-biased.
+- When Instagram hides a caption, it asks for a word or two to file it.
+- Nested folders, items in several folders, smart auto-collect folders.
+- Wallet: cards (Luhn/expiry checks), logins with password generator, secure notes; clipboard
+  clears after 45 s.
+- Lock: PIN/password, Face ID/fingerprint, auto-lock, screenshot blocking, blurred app switcher.
+- SQLCipher AES-256 vault; encrypted backup file; optional link previews (can be off).
+- Share a folder as a list of links (private items never included) — PR #16.
+- Reminders on saved items (Later today ... In a month; notification never shows the item;
+  "Reminders" section on home; included in backups) — PR #18.
+- WCAG AA contrast pass — PR #17.
+- Store docs in store/ (listing copy, privacy-form answers, device test); PRIVACY.md hosted on a
+  free Render static site; CI.
+
+
+4. ON HOLD / IDEAS (not built)
+------------------------------
+Best next features (from the 16 Nov analysis): quick-save from the share sheet without
+opening the app; on-device OCR for screenshots/reel covers (fixes the Instagram gap);
+map and city list of saved places; shareable collections as a link/image; resurfacing
+("6 places saved in Goa"); Pocket export import.
+Other ideas: saved places near me, trip mode, read-later queue, weekly digest, duplicate
+finder, notes inside items, export to Google Maps list.
+Advice kept: lead with saving and sorting, not the wallet (the wallet competes with Apple/
+Google password managers). Say plainly that a lost phone means lost data without a backup.
+
+
+5. TECHNICAL MAP
+----------------
+Expo SDK 55, TypeScript, SQLCipher, expo-share-intent pinned to 6.1.1 (Android patch in
+patches/), no backend. ~194 unit tests (npm test) + typecheck. Expo account prasadaamals-team.
+An Android APK was built on Expo (20 Nov); reminders need a fresh native build.
+Not yet tested on a real phone: share sheet, reminders permission/notification, App Group.
+
+
+6. FOUNDER ACTIONS STILL OPEN
+-----------------------------
+- Google Play account ($25) — Forward is the recommended FIRST app to ship (no server, no
+  moderation, cheapest way to learn the store process). Apple $99/yr later.
+- Google Play's closed test: 12 testers for 14 days per new app — recruit 15-20 testers.
+- Real-phone test of the share sheet and reminders.
+- Support email currently the founder's Gmail (in PRIVACY.md); switch when a domain is bought.
+
+
+7. MARKETING
+------------
+- Who: 18-35 in Indian cities who save food/travel/shopping reels and lose them; privacy-minded
+  note-takers.
+- Headline: "Save a reel from any app. Find it by city." Trust line: "No account. No AI service.
+  Encrypted on your phone." Store title like "Forward: Save Reels & Links".
+- Channels: 20-second screen-recording reels ("I saved 40 Goa reels, here is how I find them"),
+  Reddit city subs (r/bangalore, r/Kochi, r/mumbai) with genuinely useful lists, Product Hunt +
+  Indie Hackers for the privacy angle, travel creators ("trip folder").
+- Launch: week 0 internal test with 20 friends; week 1 Play release + Product Hunt + 3 videos;
+  weeks 2-6 two videos and one Reddit list a week; iOS when the Apple account is paid.
+- Targets (90 days): 1,000 installs, 4.5+ rating, 25% save 3+ items in week one, 10% open a
+  folder weekly. Likely failure: people save a dozen things and never reopen it — watch saves
+  per user in week two.
